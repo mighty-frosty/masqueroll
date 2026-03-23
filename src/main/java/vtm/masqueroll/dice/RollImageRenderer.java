@@ -56,19 +56,19 @@ public final class RollImageRenderer {
         }
         this.enabled = loaded;
         Path fontsDirectory = imageDirectory.resolveSibling("fonts");
-        this.titleFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 24f,
-            new Font("Serif", Font.BOLD, 24));
-        this.successFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 15f,
-            new Font("Serif", Font.BOLD, 15));
-        this.rowFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 12f,
-            new Font("Serif", Font.BOLD, 12));
+        this.titleFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 32f,
+            new Font("Serif", Font.BOLD, 32)).deriveFont(Font.BOLD, 32f);
+        this.successFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 19f,
+            new Font("Serif", Font.BOLD, 19)).deriveFont(Font.BOLD, 19f);
+        this.rowFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 16f,
+            new Font("Serif", Font.BOLD, 16)).deriveFont(Font.BOLD, 16f);
         this.alertFont = loadFont(
             List.of(
                 fontsDirectory.resolve("Bloodthirsty.ttf")
             ),
-            17f,
-            new Font("Dialog", Font.BOLD, 17)
-        );
+            24f,
+            new Font("Dialog", Font.BOLD, 24)
+        ).deriveFont(Font.PLAIN, 24f);
     }
 
     public byte[] render(RollSummary summary) {
