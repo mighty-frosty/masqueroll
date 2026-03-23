@@ -111,6 +111,7 @@ After creating a character, the bot also sends you a full sheet template. Reply 
 
 - `!set <stat> <value>`
 - `!set image <url>`
+- `!set image` with an attached file
 - `/set stat:<name> value:<number>`
 - `!mystats`
 - `/mystats`
@@ -123,6 +124,7 @@ Examples:
 !set hunger 2
 !set willpower 5
 !set image https://i.imgur.com/example.png
+!set image
 ```
 
 ### Macros

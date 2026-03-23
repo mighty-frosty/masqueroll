@@ -14,18 +14,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public final class RollImageRenderer {
 
-    private static final int PADDING = 20;
-    private static final int GAP = 12;
-    private static final int HEADER_HEIGHT = 56;
-    private static final int ROW_LABEL_HEIGHT = 18;
-    private static final int ROW_GAP = 14;
+    private static final int PADDING = 14;
+    private static final int GAP = 10;
+    private static final int HEADER_HEIGHT = 48;
+    private static final int ROW_LABEL_HEIGHT = 16;
+    private static final int ROW_GAP = 10;
     private static final int FALLBACK_DIE_SIZE = 48;
     private static final Color BACKGROUND = new Color(26, 24, 21);
     private static final Color HEADER_TEXT = new Color(245, 222, 196);
@@ -71,6 +70,10 @@ public final class RollImageRenderer {
         ).deriveFont(Font.PLAIN, 24f);
     }
 
+    public byte[] render(RollSummary summary, String characterName, String characterImageUrl) {
+        return render(summary);
+    }
+
     public byte[] render(RollSummary summary) {
         List<DieResult> normalDice = summary.dice().stream().filter(die -> !die.hunger()).toList();
         List<DieResult> hungerDice = summary.dice().stream().filter(DieResult::hunger).toList();
@@ -80,7 +83,7 @@ public final class RollImageRenderer {
         int widestRow = Math.max(getRowWidth(normalDice, dieWidth), getRowWidth(hungerDice, dieWidth));
         int rowCount = 1 + (hungerDice.isEmpty() ? 0 : 1);
 
-        int width = Math.max(520, (PADDING * 2) + widestRow);
+        int width = Math.max(420, (PADDING * 2) + widestRow);
         int height = HEADER_HEIGHT + (rowCount * dieHeight) + (rowCount * ROW_LABEL_HEIGHT) + ((rowCount - 1) * ROW_GAP) + (PADDING * 2);
 
         BufferedImage canvas = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);

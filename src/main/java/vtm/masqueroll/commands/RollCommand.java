@@ -48,8 +48,8 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                 context.characterSheetService().findSheet(
                     event.getGuild(),
                     event.getAuthor().getId(),
-                    sheet -> executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), sheet.imageUrl(), sheet.name()),
-                    error -> executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), null, null)
+                    sheet -> executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), sheet),
+                    error -> executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), null)
                 );
                 return;
             }
@@ -57,8 +57,8 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
             context.characterSheetService().findSheet(
                 event.getGuild(),
                 event.getAuthor().getId(),
-                sheet -> executeRoll(event, numericRequest.pool(), sheet.hunger(), numericRequest.difficulty(), sheet.imageUrl(), sheet.name()),
-                error -> executeRoll(event, numericRequest.pool(), 0, numericRequest.difficulty(), null, null)
+                sheet -> executeRoll(event, numericRequest.pool(), sheet.hunger(), numericRequest.difficulty(), sheet),
+                error -> executeRoll(event, numericRequest.pool(), 0, numericRequest.difficulty(), null)
             );
             return;
         }
@@ -69,7 +69,7 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
             sheet -> {
                 try {
                     RollRequest sheetRequest = parseSheetRoll(args, sheet);
-                    executeRoll(event, sheetRequest.pool(), sheetRequest.hunger(), sheetRequest.difficulty(), sheet.imageUrl(), sheet.name());
+                    executeRoll(event, sheetRequest.pool(), sheetRequest.hunger(), sheetRequest.difficulty(), sheet);
                 } catch (IllegalArgumentException ex) {
                     event.getChannel().sendMessage(ex.getMessage()).queue();
                 }
@@ -96,7 +96,7 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                 int hunger = explicitHunger != null ? explicitHunger : sheet.hunger();
                 try {
                     RollSummary summary = VtmDiceRoller.roll(pool, hunger, difficulty);
-                    replyWithRoll(event, pool, hunger, difficulty, summary, sheet.imageUrl(), sheet.name());
+                    replyWithRoll(event, pool, hunger, difficulty, summary, sheet);
                 } catch (IllegalArgumentException ex) {
                     event.reply(ex.getMessage()).setEphemeral(true).queue();
                 }
@@ -105,7 +105,7 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                 try {
                     int hunger = explicitHunger != null ? explicitHunger : 0;
                     RollSummary summary = VtmDiceRoller.roll(pool, hunger, difficulty);
-                    replyWithRoll(event, pool, hunger, difficulty, summary, null, null);
+                    replyWithRoll(event, pool, hunger, difficulty, summary, null);
                 } catch (IllegalArgumentException ex) {
                     event.reply(ex.getMessage()).setEphemeral(true).queue();
                 }
@@ -150,16 +150,16 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                 }
 
                 context.characterSheetService().adjustStat(
-                    event.getGuild(),
-                    event.getUser().getId(),
-                    "willpower",
+                        event.getGuild(),
+                        event.getUser().getId(),
+                        "willpower",
                     -1,
                     0,
                     20,
                     updatedSheet -> event.deferEdit().queue(
                         ignored -> {
                             disableRerollButtons(event);
-                            sendRerollResult(event, pendingRoll, newSummary);
+                            sendRerollResult(event, pendingRoll, newSummary, updatedSheet);
                         },
                         failure -> event.getChannel().sendMessage("Could not apply that reroll. Please try a new roll.").queue()
                     ),
@@ -182,15 +182,15 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
     ) {
         RollSummary newSummary = applyReroll(rerollType, pendingRoll.summary(), pendingRoll.difficulty());
         if (newSummary == null) {
-            pendingRolls.put(componentId, pendingRoll);
-            event.reply("That reroll is not available for this roll.").setEphemeral(true).queue();
-            return;
+                pendingRolls.put(componentId, pendingRoll);
+                event.reply("That reroll is not available for this roll.").setEphemeral(true).queue();
+                return;
         }
 
         event.deferEdit().queue(
             ignored -> {
                 disableRerollButtons(event);
-                sendRerollResult(event, pendingRoll, newSummary);
+                sendRerollResult(event, pendingRoll, newSummary, pendingRoll.sheet());
             },
             failure -> {
                 pendingRolls.put(componentId, pendingRoll);
@@ -254,16 +254,16 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         return new RollRequest(pool, sheet.hunger(), difficulty);
     }
 
-    private void executeRoll(MessageReceivedEvent event, int pool, int hunger, Integer difficulty, String sheetImageUrl, String characterName) {
+    private void executeRoll(MessageReceivedEvent event, int pool, int hunger, Integer difficulty, CharacterSheet sheet) {
         try {
             RollSummary summary = VtmDiceRoller.roll(pool, hunger, difficulty);
-            sendRollMessage(event, pool, hunger, difficulty, summary, sheetImageUrl, characterName);
+            sendRollMessage(event, pool, hunger, difficulty, summary, sheet);
         } catch (IllegalArgumentException ex) {
             event.getChannel().sendMessage(ex.getMessage()).queue();
         }
     }
 
-    private MessageEmbed buildEmbed(RollSummary summary, String sheetImageUrl, String characterName) {
+    private MessageEmbed buildEmbed(RollSummary summary, CharacterSheet sheet) {
         EmbedBuilder builder = new EmbedBuilder().setColor(resolveColor(summary));
         String banner = formatResultBanner(summary);
         if (banner != null) {
@@ -274,18 +274,23 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         } else {
             builder.addField("Dice", summary.formatDice(context.displayConfig()), false);
         }
-        if (sheetImageUrl != null && !sheetImageUrl.isEmpty()) {
-            builder.setThumbnail(sheetImageUrl);
-        }
-        if (characterName != null && !characterName.isEmpty()) {
-            builder.setAuthor(characterName);
+        if (sheet != null) {
+            if (sheet.imageUrl() != null && !sheet.imageUrl().isEmpty()) {
+                builder.setThumbnail(sheet.imageUrl());
+            }
+            if (sheet.name() != null && !sheet.name().isEmpty()) {
+                builder.setAuthor(sheet.name());
+            }
+            builder.addField("Hunger", sheet.hungerSummary().replaceFirst("^Hunger: ", ""), false);
+            builder.addField("Health", sheet.healthSummary().replaceFirst("^Health: ", ""), false);
+            builder.addField("Willpower", sheet.willpowerSummary().replaceFirst("^Willpower: ", ""), false);
         }
         return builder.build();
     }
 
-    private void sendRollMessage(MessageReceivedEvent event, int pool, int hunger, Integer difficulty, RollSummary summary, String sheetImageUrl, String characterName) {
-        MessageEmbed embed = buildEmbed(summary, sheetImageUrl, characterName);
-        List<Button> buttons = buildRerollButtons(event.getAuthor().getId(), event.getGuild(), pool, hunger, difficulty, summary, sheetImageUrl, characterName);
+    private void sendRollMessage(MessageReceivedEvent event, int pool, int hunger, Integer difficulty, RollSummary summary, CharacterSheet sheet) {
+        MessageEmbed embed = buildEmbed(summary, sheet);
+        List<Button> buttons = buildRerollButtons(event.getAuthor().getId(), event.getGuild(), pool, hunger, difficulty, summary, sheet);
         if (context.imageRenderer().isEnabled()) {
             byte[] imageBytes = context.imageRenderer().render(summary);
             var action = event.getChannel().sendFiles(FileUpload.fromData(imageBytes, "roll-result.png")).setEmbeds(embed);
@@ -309,11 +314,10 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         int hunger,
         Integer difficulty,
         RollSummary summary,
-        String sheetImageUrl,
-        String characterName
+        CharacterSheet sheet
     ) {
-        MessageEmbed embed = buildEmbed(summary, sheetImageUrl, characterName);
-        List<Button> buttons = buildRerollButtons(event.getUser().getId(), event.getGuild(), pool, hunger, difficulty, summary, sheetImageUrl, characterName);
+        MessageEmbed embed = buildEmbed(summary, sheet);
+        List<Button> buttons = buildRerollButtons(event.getUser().getId(), event.getGuild(), pool, hunger, difficulty, summary, sheet);
         if (context.imageRenderer().isEnabled()) {
             byte[] imageBytes = context.imageRenderer().render(summary);
             var action = event.replyFiles(FileUpload.fromData(imageBytes, "roll-result.png")).addEmbeds(embed);
@@ -338,26 +342,25 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         int hunger,
         Integer difficulty,
         RollSummary summary,
-        String sheetImageUrl,
-        String characterName
+        CharacterSheet sheet
     ) {
         List<Button> buttons = new ArrayList<>();
 
         if (VtmDiceRoller.countFailedNormalRerolls(summary) > 0) {
             String id = RerollType.FAILED_NORMAL.componentPrefix() + UUID.randomUUID();
-            pendingRolls.put(id, new PendingRoll(ownerId, pool, hunger, difficulty, summary, sheetImageUrl, characterName));
+            pendingRolls.put(id, new PendingRoll(ownerId, pool, hunger, difficulty, summary, sheet));
             buttons.add(Button.secondary(id, RerollType.FAILED_NORMAL.buttonLabel())
                 .withEmoji(resolveGuildEmoji(guild, RerollType.FAILED_NORMAL.guildEmojiName(), RerollType.FAILED_NORMAL.fallbackEmoji())));
         }
         if (VtmDiceRoller.countNormalSuccessRerollsForCrit(summary) > 0) {
             String id = RerollType.SEARCH_CRIT.componentPrefix() + UUID.randomUUID();
-            pendingRolls.put(id, new PendingRoll(ownerId, pool, hunger, difficulty, summary, sheetImageUrl, characterName));
+            pendingRolls.put(id, new PendingRoll(ownerId, pool, hunger, difficulty, summary, sheet));
             buttons.add(Button.primary(id, RerollType.SEARCH_CRIT.buttonLabel())
                 .withEmoji(resolveGuildEmoji(guild, RerollType.SEARCH_CRIT.guildEmojiName(), RerollType.SEARCH_CRIT.fallbackEmoji())));
         }
         if (VtmDiceRoller.countNormalCriticalRerollsForMessy(summary) > 0) {
             String id = RerollType.BREAK_MESSY_CRIT.componentPrefix() + UUID.randomUUID();
-            pendingRolls.put(id, new PendingRoll(ownerId, pool, hunger, difficulty, summary, sheetImageUrl, characterName));
+            pendingRolls.put(id, new PendingRoll(ownerId, pool, hunger, difficulty, summary, sheet));
             buttons.add(Button.danger(id, RerollType.BREAK_MESSY_CRIT.buttonLabel())
                 .withEmoji(resolveGuildEmoji(guild, RerollType.BREAK_MESSY_CRIT.guildEmojiName(), RerollType.BREAK_MESSY_CRIT.fallbackEmoji())));
         }
@@ -374,8 +377,8 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         event.getHook().editOriginalComponents(rows).queue();
     }
 
-    private void sendRerollResult(ButtonInteractionEvent event, PendingRoll pendingRoll, RollSummary summary) {
-        MessageEmbed embed = buildEmbed(summary, pendingRoll.sheetImageUrl(), pendingRoll.characterName());
+    private void sendRerollResult(ButtonInteractionEvent event, PendingRoll pendingRoll, RollSummary summary, CharacterSheet sheet) {
+        MessageEmbed embed = buildEmbed(summary, sheet);
         List<Button> buttons = buildRerollButtons(
             pendingRoll.ownerId(),
             event.getGuild(),
@@ -383,8 +386,7 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
             pendingRoll.hunger(),
             pendingRoll.difficulty(),
             summary,
-            pendingRoll.sheetImageUrl(),
-            pendingRoll.characterName()
+            sheet
         );
 
         if (context.imageRenderer().isEnabled()) {
