@@ -63,8 +63,10 @@ jobs:
               "GHCR_USERNAME='$GHCR_USERNAME' GHCR_TOKEN='$GHCR_TOKEN' DISCORD_BOT_TOKEN='$DISCORD_BOT_TOKEN' IMAGE_NAME='$IMAGE_NAME' bash -s" <<'EOF'
           set -e
           if ! command -v docker >/dev/null 2>&1; then
-            echo "Docker not found on VM."
-            exit 1
+            echo "Docker not found on VM. Installing Docker..."
+            sudo apt update
+            sudo apt install -y docker.io
+            sudo systemctl enable --now docker
           fi
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           docker pull "$IMAGE_NAME:latest"

@@ -302,18 +302,17 @@ Add these repository secrets:
 
 ### Oracle VM setup
 
-1. Install Docker on the VM.
+1. Install Docker on the Ubuntu VM.
 2. Make sure your SSH user can run Docker commands.
 
 ```bash
-sudo dnf install -y dnf-plugins-core
-sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt update
+sudo apt install -y docker.io
 sudo systemctl enable --now docker
-sudo usermod -aG docker opc
+sudo usermod -aG docker ubuntu
 ```
 
-3. Log out and back in once so the `docker` group applies to `opc`.
+3. Log out and back in once so the `docker` group applies to `ubuntu`.
 4. After that, every push to `main` will deploy automatically.
 
 ## Notes
