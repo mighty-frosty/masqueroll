@@ -24,59 +24,65 @@ jobs:
       - name: Build runnable jar
         run: mvn -B package
 
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/oracle_vm <<EOF
+          ${{ secrets.ORACLE_SSH_KEY }}
+          EOF
+          chmod 600 ~/.ssh/oracle_vm
+
       - name: Copy jar to Oracle VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
-          source: target/masqueroll.jar
-          target: /home/${{ secrets.ORACLE_USER }}/masqueroll/
-          strip_components: 1
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+        run: |
+          ssh -i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no "$ORACLE_USER@$ORACLE_HOST" "mkdir -p /home/$ORACLE_USER/masqueroll"
+          scp -i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no target/masqueroll.jar "$ORACLE_USER@$ORACLE_HOST:/home/$ORACLE_USER/masqueroll/masqueroll.jar"
 
       - name: Restart bot service
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
-          script: |
-            set -e
-            mkdir -p /home/${{ secrets.ORACLE_USER }}/masqueroll
-            cat > /home/${{ secrets.ORACLE_USER }}/masqueroll/.env <<EOF
-            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
-            EOF
-            if [ ! -s /home/${{ secrets.ORACLE_USER }}/masqueroll/.env ]; then
-              echo ".env file could not be created."
-              exit 1
-            fi
-            if [ ! -f /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar ]; then
-              echo "masqueroll.jar not found."
-              exit 1
-            fi
-            if ! command -v java >/dev/null 2>&1; then
-              echo "Java not found on VM. Installing Java 25..."
-              sudo dnf install -y java-25-openjdk
-            fi
-            JAVA_BIN=$(command -v java)
-            if [ -z "$JAVA_BIN" ]; then
-              echo "Java is still not available after installation."
-              exit 1
-            fi
-            "$JAVA_BIN" -version
-            APP_CMD="$JAVA_BIN -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar"
-            EXISTING_PIDS=$(pgrep -f "^${APP_CMD}$" || true)
-            if [ -n "$EXISTING_PIDS" ]; then
-              kill $EXISTING_PIDS || true
-              sleep 2
-            fi
-            nohup "$JAVA_BIN" -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar \
-              > /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log 2>&1 < /dev/null &
-            disown || true
-            sleep 5
-            if ! pgrep -f "^${APP_CMD}$" > /dev/null; then
-              echo "Bot process did not stay running. Recent log output:"
-              tail -n 50 /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log || true
-              exit 1
-            fi
-            echo "Masqueroll deployed successfully."
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          ssh -i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no "$ORACLE_USER@$ORACLE_HOST" <<EOF
+          set -e
+          mkdir -p /home/$ORACLE_USER/masqueroll
+          cat > /home/$ORACLE_USER/masqueroll/.env <<EOT
+          DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN
+          EOT
+          if [ ! -s /home/$ORACLE_USER/masqueroll/.env ]; then
+            echo ".env file could not be created."
+            exit 1
+          fi
+          if [ ! -f /home/$ORACLE_USER/masqueroll/masqueroll.jar ]; then
+            echo "masqueroll.jar not found."
+            exit 1
+          fi
+          if ! command -v java >/dev/null 2>&1; then
+            echo "Java not found on VM. Installing Java 25..."
+            sudo dnf install -y java-25-openjdk
+          fi
+          JAVA_BIN=\$(command -v java)
+          if [ -z "\$JAVA_BIN" ]; then
+            echo "Java is still not available after installation."
+            exit 1
+          fi
+          "\$JAVA_BIN" -version
+          APP_CMD="\$JAVA_BIN -jar /home/$ORACLE_USER/masqueroll/masqueroll.jar"
+          EXISTING_PIDS=\$(pgrep -f "^\$APP_CMD$" || true)
+          if [ -n "\$EXISTING_PIDS" ]; then
+            kill \$EXISTING_PIDS || true
+            sleep 2
+          fi
+          nohup "\$JAVA_BIN" -jar /home/$ORACLE_USER/masqueroll/masqueroll.jar \
+            > /home/$ORACLE_USER/masqueroll/bot.log 2>&1 < /dev/null &
+          sleep 5
+          if ! pgrep -f "^\$APP_CMD$" > /dev/null; then
+            echo "Bot process did not stay running. Recent log output:"
+            tail -n 50 /home/$ORACLE_USER/masqueroll/bot.log || true
+            exit 1
+          fi
+          echo "Masqueroll deployed successfully."
+          EOF
