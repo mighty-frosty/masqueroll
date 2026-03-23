@@ -56,7 +56,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          SSH_OPTS="-i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3"
+          SSH_OPTS="-i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
           for attempt in 1 2 3; do
             echo "Deploy attempt $attempt..."
             if ssh $SSH_OPTS "$ORACLE_USER@$ORACLE_HOST" \
