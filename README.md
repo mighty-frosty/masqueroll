@@ -1,4 +1,4 @@
-# Abbioccatore
+# Masqueroll
 
 A Java Discord bot for Vampire: The Masquerade V5 dice rolls, rerolls, rouse checks, and bot-managed character sheets.
 
