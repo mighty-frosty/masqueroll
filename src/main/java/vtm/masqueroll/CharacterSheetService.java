@@ -624,7 +624,16 @@ public final class CharacterSheetService {
     private String appendDisplaySection(String baseContent) {
         String normalizedBase = stripGeneratedSection(baseContent).trim();
         CharacterSheet sheet = parseRawSheet(normalizedBase);
-        return normalizedBase + "\n\n" + TRACKERS_MARKER + "\n" + sheet.describe();
+        StringBuilder builder = new StringBuilder()
+            .append(normalizedBase)
+            .append("\n\n")
+            .append(TRACKERS_MARKER)
+            .append("\n")
+            .append(sheet.describe());
+        if (sheet.imageUrl() != null && !sheet.imageUrl().isBlank()) {
+            builder.append("\n").append(sheet.imageUrl());
+        }
+        return builder.toString();
     }
 
     private CharacterSheet parseRawSheet(String content) {
