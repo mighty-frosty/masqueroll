@@ -137,6 +137,22 @@ public final class CharacterSheetService {
         updateSheetLine(guild, userId, macroName, formula.trim(), onSuccess, onFailure);
     }
 
+    public void updateImage(
+        Guild guild,
+        String userId,
+        String imageUrl,
+        Consumer<CharacterSheet> onSuccess,
+        Consumer<String> onFailure
+    ) {
+        String trimmed = imageUrl == null ? "" : imageUrl.trim();
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            onFailure.accept("Image URLs must start with http:// or https://");
+            return;
+        }
+
+        updateSheetLine(guild, userId, "image", trimmed, onSuccess, onFailure);
+    }
+
     public void removeMacro(
         Guild guild,
         String userId,

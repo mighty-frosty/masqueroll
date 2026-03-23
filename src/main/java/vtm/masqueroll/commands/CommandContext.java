@@ -34,6 +34,7 @@ public record CommandContext(
             `!character Michael` Create your sheet
             `!delete Michael` Delete your own bot-managed sheet
             `!set <stat> <value>` Update one stat
+            `!set image <url>` Update your character image
             `!macro <name> = <formula>` Save a macro
             `!removemacro <name>` Remove a macro
             `!mystats` Show your current sheet values

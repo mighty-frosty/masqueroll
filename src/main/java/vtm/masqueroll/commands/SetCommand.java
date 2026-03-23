@@ -14,7 +14,29 @@ public record SetCommand(CommandContext context) implements Command {
     @Override
     public void handleMessage(MessageReceivedEvent event, String content) {
         String args = content.substring(BotCommand.SET.prefixCommand().length()).trim();
-        String[] parts = args.split("\\s+");
+        String[] parts = args.split("\\s+", 3);
+        if (parts.length < 2) {
+            event.getChannel().sendMessage(BotCommand.SET.usage()).queue();
+            return;
+        }
+
+        if (parts[0].equalsIgnoreCase("image")) {
+            String imageUrl = args.substring(parts[0].length()).trim();
+            if (imageUrl.isEmpty()) {
+                event.getChannel().sendMessage("Usage: `!set image <url>`").queue();
+                return;
+            }
+
+            context.characterSheetService().updateImage(
+                event.getGuild(),
+                event.getAuthor().getId(),
+                imageUrl,
+                sheet -> event.getChannel().sendMessage("Updated `image`.").queue(),
+                error -> event.getChannel().sendMessage(error).queue()
+            );
+            return;
+        }
+
         if (parts.length != 2) {
             event.getChannel().sendMessage(BotCommand.SET.usage()).queue();
             return;

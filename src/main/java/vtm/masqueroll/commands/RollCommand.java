@@ -164,12 +164,34 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                     }
                 );
             },
-            error -> {
-                pendingRolls.put(componentId, pendingRoll);
-                event.reply(error).setEphemeral(true).queue();
-            }
+            error -> handleSheetlessReroll(event, componentId, pendingRoll, rerollType)
         );
         return true;
+    }
+
+    private void handleSheetlessReroll(
+        ButtonInteractionEvent event,
+        String componentId,
+        PendingRoll pendingRoll,
+        RerollType rerollType
+    ) {
+        RollSummary newSummary = applyReroll(rerollType, pendingRoll.summary(), pendingRoll.difficulty());
+        if (newSummary == null) {
+            pendingRolls.put(componentId, pendingRoll);
+            event.reply("That reroll is not available for this roll.").setEphemeral(true).queue();
+            return;
+        }
+
+        event.deferEdit().queue(
+            ignored -> {
+                disableRerollButtons(event);
+                sendRerollResult(event, pendingRoll, newSummary);
+            },
+            failure -> {
+                pendingRolls.put(componentId, pendingRoll);
+                event.getChannel().sendMessage("Could not apply that reroll. Please try a new roll.").queue();
+            }
+        );
     }
 
     private RollRequest tryParseNumericRoll(String args) {
