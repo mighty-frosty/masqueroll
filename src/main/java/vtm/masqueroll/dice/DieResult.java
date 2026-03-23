@@ -1,4 +1,4 @@
-package vtm.masqueroll;
+package vtm.masqueroll.dice;
 
 public record DieResult(int value, boolean hunger) {
 

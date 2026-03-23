@@ -69,6 +69,8 @@ When a player creates a sheet, the bot creates a forum post for that character a
 
 ## Commands
 
+Use `!help` or `/help` for a quick in-Discord summary.
+
 ### Rolling
 
 - `!v <pool>`
@@ -100,6 +102,8 @@ Examples:
 
 If you attach an image to `!character Michael`, the bot stores it on the sheet and uses it later as the roll thumbnail.
 
+After creating a character, the bot also sends you a full sheet template. Reply to that bot message with your filled-out sheet and it will update the entire character in one go.
+
 ### Stats
 
 - `!set <stat> <value>`
@@ -113,6 +117,7 @@ Examples:
 !set wits 3
 !set awareness 3
 !set hunger 2
+!set willpower 5
 ```
 
 ### Macros
@@ -140,6 +145,34 @@ Rouse behavior:
 - `1-5` = failure
 - on failure, hunger is increased automatically on the bot-owned sheet
 
+### Health and willpower
+
+- `!damage superficial`
+- `!damage aggravated`
+- `!damage superficial 2`
+- `/damage type:superficial amount:2`
+- `/damage type:aggravated amount:1`
+- `!heal`
+- `/heal`
+- `!restore`
+- `!restore health`
+- `!restore health 2`
+- `!restore willpower`
+- `!restore willpower 3`
+- `/restore target:all`
+
+Current behavior:
+
+- `willpower` is tracked on the sheet and each reroll spends 1 willpower
+- `health_superficial` and `health_aggravated` are tracked on the sheet
+- `!damage` adds the requested amount of health damage
+- `!heal` heals 1 superficial health damage and performs a rouse check
+- if the heal rouse check fails, hunger is increased by 1
+- `!mystats` shows emoji trackers for hunger, health, and willpower
+- `!restore` restores health and willpower
+- `!restore health <number>` restores that many health boxes
+- `!restore willpower <number>` restores that many willpower
+
 ## Character sheet format
 
 The bot creates a default sheet automatically, but the stored data looks like this:
@@ -149,6 +182,9 @@ user = @stayfrosty2663
 name = Michael
 image = https://...
 hunger = 2
+health_superficial = 0
+health_aggravated = 0
+willpower = 5
 
 strength = 1
 dexterity = 2
@@ -195,6 +231,8 @@ auspex = wits + awareness + 3
 ```
 
 Spaces around `=` are fine.
+
+You can also paste the whole sheet at once by replying to the template message the bot sends after `!character`.
 
 ## Rerolls
 

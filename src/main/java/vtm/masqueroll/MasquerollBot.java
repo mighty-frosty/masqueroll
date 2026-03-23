@@ -5,6 +5,8 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import vtm.masqueroll.dice.DiceDisplayConfig;
+import vtm.masqueroll.dice.RollImageRenderer;
 
 import java.nio.file.Path;
 
@@ -26,6 +28,7 @@ public final class MasquerollBot {
         jda.awaitReady();
 
         jda.updateCommands().addCommands(
+            Commands.slash(BotCommand.HELP.slashName(), BotCommand.HELP.description()),
             Commands.slash(BotCommand.ROLL.slashName(), BotCommand.ROLL.description())
                 .addOption(OptionType.INTEGER, "pool", "Total dice to roll", true)
                 .addOption(OptionType.INTEGER, "hunger", "How many of those dice are hunger dice", false)
@@ -42,6 +45,13 @@ public final class MasquerollBot {
                 .addOption(OptionType.STRING, "formula", "Formula like wits + awareness + 3", true),
             Commands.slash(BotCommand.REMOVE_MACRO.slashName(), BotCommand.REMOVE_MACRO.description())
                 .addOption(OptionType.STRING, "name", "Macro name", true),
+            Commands.slash(BotCommand.DAMAGE.slashName(), BotCommand.DAMAGE.description())
+                .addOption(OptionType.STRING, "type", "superficial or aggravated", true)
+                .addOption(OptionType.INTEGER, "amount", "How much damage to apply", false),
+            Commands.slash(BotCommand.HEAL.slashName(), BotCommand.HEAL.description()),
+            Commands.slash(BotCommand.RESTORE.slashName(), BotCommand.RESTORE.description())
+                .addOption(OptionType.STRING, "target", "all, health, or willpower", false)
+                .addOption(OptionType.INTEGER, "amount", "Optional amount to restore", false),
             Commands.slash(BotCommand.MY_STATS.slashName(), BotCommand.MY_STATS.description())
         ).queue();
     }

@@ -1,4 +1,4 @@
-package vtm.masqueroll;
+package vtm.masqueroll.dice;
 
 import java.util.List;
 

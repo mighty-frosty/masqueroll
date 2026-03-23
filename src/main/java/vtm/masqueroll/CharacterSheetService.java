@@ -18,6 +18,7 @@ public final class CharacterSheetService {
 
     private static final String CHANNEL_NAME = "character-sheets";
     private static final int HISTORY_SCAN_LIMIT = 100;
+    private static final String TRACKERS_MARKER = "---- TRACKERS ----";
 
     public void findSheet(Guild guild, String userId, Consumer<CharacterSheet> onSuccess, Consumer<String> onFailure) {
         findSheetMessage(
@@ -73,6 +74,10 @@ public final class CharacterSheetService {
         );
     }
 
+    public String buildTemplate(User user, String displayName, String imageUrl) {
+        return stripGeneratedSection(buildDefaultSheet(user, displayName, imageUrl));
+    }
+
     public void updateStat(
         Guild guild,
         String userId,
@@ -91,6 +96,29 @@ public final class CharacterSheetService {
         }
 
         updateSheetLine(guild, userId, stat, Integer.toString(value), onSuccess, onFailure);
+    }
+
+    public void adjustStat(
+        Guild guild,
+        String userId,
+        String stat,
+        int delta,
+        int minValue,
+        int maxValue,
+        Consumer<CharacterSheet> onSuccess,
+        Consumer<String> onFailure
+    ) {
+        findSheetMessage(
+            guild,
+            userId,
+            message -> {
+                CharacterSheet sheet = parseSheet(message);
+                int current = currentStatValue(sheet, stat);
+                int updated = Math.max(minValue, Math.min(maxValue, current + delta));
+                editSheetMessage(message, replaceLine(message.getContentRaw(), stat, Integer.toString(updated)), onSuccess, onFailure);
+            },
+            onFailure
+        );
     }
 
     public void updateMacro(
@@ -139,6 +167,55 @@ public final class CharacterSheetService {
                 CharacterSheet sheet = parseSheet(message);
                 int newHunger = Math.min(5, sheet.hunger() + 1);
                 editSheetMessage(message, replaceLine(message.getContentRaw(), "hunger", Integer.toString(newHunger)), onSuccess, onFailure);
+            },
+            onFailure
+        );
+    }
+
+    public void restoreTracks(
+        Guild guild,
+        String userId,
+        boolean restoreHealth,
+        boolean restoreWillpower,
+        Integer amount,
+        Consumer<CharacterSheet> onSuccess,
+        Consumer<String> onFailure
+    ) {
+        findSheetMessage(
+            guild,
+            userId,
+            message -> {
+                String updated = stripGeneratedSection(message.getContentRaw());
+                CharacterSheet sheet = parseSheet(message);
+                if (restoreHealth) {
+                    updated = restoreHealth(updated, sheet, amount);
+                }
+                if (restoreWillpower) {
+                    updated = restoreWillpower(updated, sheet, amount);
+                }
+                editSheetMessage(message, updated, onSuccess, onFailure);
+            },
+            onFailure
+        );
+    }
+
+    public void replaceSheet(
+        Guild guild,
+        String userId,
+        String newContent,
+        Consumer<CharacterSheet> onSuccess,
+        Consumer<String> onFailure
+    ) {
+        findSheetMessage(
+            guild,
+            userId,
+            message -> {
+                String sanitized = sanitizeSheetContent(newContent, userId, parseSheet(message));
+                if (sanitized == null || sanitized.isBlank()) {
+                    onFailure.accept("Your sheet reply was empty.");
+                    return;
+                }
+                editSheetMessage(message, sanitized, onSuccess, onFailure);
             },
             onFailure
         );
@@ -249,7 +326,7 @@ public final class CharacterSheetService {
                     onFailure.accept(new IllegalStateException("No messages found."));
                     return;
                 }
-                onSuccess.accept(messages.getFirst());
+                    onSuccess.accept(messages.getFirst());
             },
             onFailure
         );
@@ -302,7 +379,7 @@ public final class CharacterSheetService {
 
         for (String rawLine : content.lines().toList()) {
             String line = rawLine.trim();
-            if (line.isEmpty() || !line.contains("=")) {
+            if (!line.contains("=")) {
                 continue;
             }
 
@@ -312,16 +389,18 @@ public final class CharacterSheetService {
             }
 
             String key = CharacterSheet.normalizeKey(parts[0]);
-            if (key.equals("user")) {
-                continue;
-            }
-            if (key.equals("name")) {
-                name = parts[1].trim();
-                continue;
-            }
-            if (key.equals("image")) {
-                values.put(key, parts[1].trim());
-                continue;
+            switch (key) {
+                case "user" -> {
+                    continue;
+                }
+                case "name" -> {
+                    name = parts[1].trim();
+                    continue;
+                }
+                case "image" -> {
+                    values.put(key, parts[1].trim());
+                    continue;
+                }
             }
 
             values.put(key, CharacterSheet.normalizeKey(parts[1]));
@@ -341,7 +420,6 @@ public final class CharacterSheetService {
         if (imageUrl != null && !imageUrl.isBlank()) {
             lines.add("image = " + imageUrl);
         }
-        lines.add("hunger = 0");
         lines.add("");
         lines.add("strength = 0");
         lines.add("dexterity = 0");
@@ -384,11 +462,11 @@ public final class CharacterSheetService {
         lines.add("technology = 0");
         lines.add("");
         lines.add("---- MACRO ----");
-        return String.join("\n", lines);
+        return appendDisplaySection(String.join("\n", lines));
     }
 
     private String replaceLine(String content, String key, String value) {
-        List<String> lines = new ArrayList<>(content.lines().toList());
+        List<String> lines = new ArrayList<>(stripGeneratedSection(content).lines().toList());
         String normalizedKey = CharacterSheet.normalizeKey(key);
 
         for (int i = 0; i < lines.size(); i++) {
@@ -404,7 +482,7 @@ public final class CharacterSheetService {
 
             if (CharacterSheet.normalizeKey(parts[0]).equals(normalizedKey)) {
                 lines.set(i, key + " = " + value);
-                return String.join("\n", lines);
+                return appendDisplaySection(String.join("\n", lines));
             }
         }
 
@@ -422,11 +500,11 @@ public final class CharacterSheetService {
             lines.add(key + " = " + value);
         }
 
-        return String.join("\n", lines);
+        return appendDisplaySection(String.join("\n", lines));
     }
 
     private String removeLine(String content, String key) {
-        List<String> lines = new ArrayList<>(content.lines().toList());
+        List<String> lines = new ArrayList<>(stripGeneratedSection(content).lines().toList());
         String normalizedKey = CharacterSheet.normalizeKey(key);
 
         for (int i = 0; i < lines.size(); i++) {
@@ -442,11 +520,125 @@ public final class CharacterSheetService {
 
             if (CharacterSheet.normalizeKey(parts[0]).equals(normalizedKey)) {
                 lines.remove(i);
-                return String.join("\n", lines);
+                return appendDisplaySection(String.join("\n", lines));
             }
         }
 
         return null;
+    }
+
+    private String sanitizeSheetContent(String content, String userId, CharacterSheet existingSheet) {
+        String normalized = stripGeneratedSection(stripCodeFence(content)).trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        List<String> lines = new ArrayList<>(normalized.lines().toList());
+        replaceOrInsertLine(lines, "user", "<@" + userId + ">");
+
+        if (existingSheet.name() != null && lines.stream().noneMatch(line -> CharacterSheet.normalizeKey(line).startsWith("name="))) {
+            replaceOrInsertLine(lines, "name", existingSheet.name());
+        }
+
+        if (existingSheet.imageUrl() != null && !existingSheet.imageUrl().isBlank()
+            && lines.stream().noneMatch(line -> CharacterSheet.normalizeKey(line).startsWith("image="))) {
+            int insertionIndex = 0;
+            for (int i = 0; i < lines.size(); i++) {
+                if (CharacterSheet.normalizeKey(lines.get(i)).startsWith("name=")) {
+                    insertionIndex = i + 1;
+                    break;
+                }
+            }
+            lines.add(insertionIndex, "image = " + existingSheet.imageUrl());
+        }
+
+        return appendDisplaySection(String.join("\n", lines));
+    }
+
+    private void replaceOrInsertLine(List<String> lines, String key, String value) {
+        String normalizedKey = CharacterSheet.normalizeKey(key);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (!line.contains("=")) {
+                continue;
+            }
+
+            String[] parts = line.split("=", 2);
+            if (parts.length != 2) {
+                continue;
+            }
+
+            if (CharacterSheet.normalizeKey(parts[0]).equals(normalizedKey)) {
+                lines.set(i, key + " = " + value);
+                return;
+            }
+        }
+
+        lines.addFirst(key + " = " + value);
+    }
+
+    private String stripCodeFence(String content) {
+        String trimmed = content.trim();
+        if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) {
+            return content;
+        }
+
+        int firstLineBreak = trimmed.indexOf('\n');
+        if (firstLineBreak < 0) {
+            return "";
+        }
+
+        return trimmed.substring(firstLineBreak + 1, trimmed.length() - 3).trim();
+    }
+
+    private String stripGeneratedSection(String content) {
+        int markerIndex = content.indexOf(TRACKERS_MARKER);
+        if (markerIndex < 0) {
+            return content;
+        }
+        return content.substring(0, markerIndex).trim();
+    }
+
+    private String appendDisplaySection(String baseContent) {
+        String normalizedBase = stripGeneratedSection(baseContent).trim();
+        CharacterSheet sheet = parseRawSheet(normalizedBase);
+        return normalizedBase + "\n\n" + TRACKERS_MARKER + "\n" + sheet.describe();
+    }
+
+    private CharacterSheet parseRawSheet(String content) {
+        Map<String, String> values = new LinkedHashMap<>();
+        String name = null;
+
+        for (String rawLine : content.lines().toList()) {
+            String line = rawLine.trim();
+            if (!line.contains("=")) {
+                continue;
+            }
+
+            String[] parts = line.split("=", 2);
+            if (parts.length != 2) {
+                continue;
+            }
+
+            String key = CharacterSheet.normalizeKey(parts[0]);
+            switch (key) {
+                case "user" -> {
+                    continue;
+                }
+                case "name" -> {
+                    name = parts[1].trim();
+                    continue;
+                }
+                case "image" -> {
+                    values.put(key, parts[1].trim());
+                    continue;
+                }
+            }
+
+            values.put(key, CharacterSheet.normalizeKey(parts[1]));
+        }
+
+        return new CharacterSheet(values, values.get("image"), name, true);
     }
 
     private boolean isCoreStat(String normalizedKey) {
@@ -458,6 +650,45 @@ public final class CharacterSheetService {
             && !normalizedKey.equals("obfuscate")
             && !normalizedKey.equals("potence")
             && !normalizedKey.equals("presence");
+    }
+
+    private String restoreHealth(String content, CharacterSheet sheet, Integer amount) {
+        if (amount == null) {
+            String cleared = replaceLine(content, "health_superficial", "0");
+            return replaceLine(cleared, "health_aggravated", "0");
+        }
+
+        int remaining = Math.max(0, amount);
+        int superficial = sheet.getValue("health_superficial").orElse(0);
+        int aggravated = sheet.getValue("health_aggravated").orElse(0);
+
+        int healedSuperficial = Math.min(superficial, remaining);
+        superficial -= healedSuperficial;
+        remaining -= healedSuperficial;
+
+        int healedAggravated = Math.min(aggravated, remaining);
+        aggravated -= healedAggravated;
+
+        String updated = replaceLine(content, "health_superficial", Integer.toString(superficial));
+        return replaceLine(updated, "health_aggravated", Integer.toString(aggravated));
+    }
+
+    private String restoreWillpower(String content, CharacterSheet sheet, Integer amount) {
+        if (amount == null) {
+            String removed = removeLine(content, "willpower");
+            return removed == null || removed.isBlank() ? content : removed;
+        }
+
+        int restored = Math.min(sheet.willpowerMax(), sheet.currentWillpower() + Math.max(0, amount));
+        return replaceLine(content, "willpower", Integer.toString(restored));
+    }
+
+    private int currentStatValue(CharacterSheet sheet, String stat) {
+        String normalized = CharacterSheet.normalizeKey(stat);
+        if (normalized.equals("willpower")) {
+            return sheet.currentWillpower();
+        }
+        return sheet.getValue(stat).orElse(0);
     }
 
     private record SheetLocation(GuildMessageChannel messageChannel, ForumChannel forumChannel) {

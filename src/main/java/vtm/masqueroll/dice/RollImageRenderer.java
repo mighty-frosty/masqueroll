@@ -1,4 +1,6 @@
-package vtm.masqueroll;
+package vtm.masqueroll.dice;
+
+import lombok.Getter;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -30,6 +32,7 @@ public final class RollImageRenderer {
     private static final Color ALERT_TEXT = new Color(186, 32, 32);
 
     private final Map<String, BufferedImage> assets = new HashMap<>();
+    @Getter
     private final boolean enabled;
     private final Font titleFont;
     private final Font accentFont;
@@ -58,16 +61,12 @@ public final class RollImageRenderer {
             new Font("Dialog", Font.BOLD, 12));
     }
 
-    public boolean isEnabled() {
-        return enabled;
-    }
-
     public byte[] render(RollSummary summary) {
         List<DieResult> normalDice = summary.dice().stream().filter(die -> !die.hunger()).toList();
         List<DieResult> hungerDice = summary.dice().stream().filter(DieResult::hunger).toList();
 
-        int dieWidth = getMaxWidth(summary.dice(), summary.bestialFailure());
-        int dieHeight = getMaxHeight(summary.dice(), summary.bestialFailure());
+        int dieWidth = getMaxWidth(summary.dice());
+        int dieHeight = getMaxHeight(summary.dice());
         int widestRow = Math.max(getRowWidth(normalDice, dieWidth), getRowWidth(hungerDice, dieWidth));
         int rowCount = 1 + (hungerDice.isEmpty() ? 0 : 1);
 
@@ -84,10 +83,10 @@ public final class RollImageRenderer {
 
         drawHeader(graphics, width, summary);
         int y = HEADER_HEIGHT + PADDING;
-        y = drawDiceRow(graphics, "Normal", normalDice, y, dieWidth, dieHeight, summary.bestialFailure());
+        y = drawDiceRow(graphics, "Normal", normalDice, y, dieWidth, dieHeight);
         if (!hungerDice.isEmpty()) {
             y += ROW_GAP;
-            drawDiceRow(graphics, "Hunger", hungerDice, y, dieWidth, dieHeight, summary.bestialFailure());
+            drawDiceRow(graphics, "Hunger", hungerDice, y, dieWidth, dieHeight);
         }
         graphics.dispose();
 
@@ -121,8 +120,7 @@ public final class RollImageRenderer {
         List<DieResult> dice,
         int y,
         int dieWidth,
-        int dieHeight,
-        boolean bestialFailure
+        int dieHeight
     ) {
         graphics.setColor(SUBTLE_TEXT);
         graphics.setFont(rowFont);
@@ -131,7 +129,7 @@ public final class RollImageRenderer {
         int x = PADDING;
         int drawTop = y + ROW_LABEL_HEIGHT;
         for (DieResult die : dice) {
-            BufferedImage face = resolveFace(die, bestialFailure);
+            BufferedImage face = resolveFace(die);
             int drawY = drawTop + Math.max(0, (dieHeight - face.getHeight()) / 2);
             graphics.drawImage(face, x, drawY, null);
             x += dieWidth + GAP;
@@ -146,21 +144,21 @@ public final class RollImageRenderer {
         return (dice.size() * dieWidth) + ((dice.size() - 1) * GAP);
     }
 
-    private int getMaxWidth(List<DieResult> dice, boolean bestialFailure) {
+    private int getMaxWidth(List<DieResult> dice) {
         return dice.stream()
-            .mapToInt(die -> resolveFace(die, bestialFailure).getWidth())
+            .mapToInt(die -> resolveFace(die).getWidth())
             .max()
             .orElse(FALLBACK_DIE_SIZE);
     }
 
-    private int getMaxHeight(List<DieResult> dice, boolean bestialFailure) {
+    private int getMaxHeight(List<DieResult> dice) {
         return dice.stream()
-            .mapToInt(die -> resolveFace(die, bestialFailure).getHeight())
+            .mapToInt(die -> resolveFace(die).getHeight())
             .max()
             .orElse(FALLBACK_DIE_SIZE);
     }
 
-    private BufferedImage resolveFace(DieResult die, boolean bestialFailure) {
+    private BufferedImage resolveFace(DieResult die) {
         if (die.value() == 10) {
             return die.hunger() ? assets.get("red-crit") : assets.get("normal-crit");
         }

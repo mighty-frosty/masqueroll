@@ -1,4 +1,4 @@
-package vtm.masqueroll;
+package vtm.masqueroll.dice;
 
 public enum RerollType {
     FAILED_NORMAL("reroll:fail:", "Reroll up to 3", "v5fail", "\uD83D\uDD04"),

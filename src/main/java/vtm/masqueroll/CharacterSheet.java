@@ -9,26 +9,42 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class CharacterSheet {
+public record CharacterSheet(
+    Map<String, String> values,
+    String imageUrl,
+    String name,
+    boolean botOwned
+) {
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("([+-]?[^+-]+)");
     private static final int DEFAULT_HUNGER = 0;
     private static final String HUNGER_KEY = "hunger";
+    private static final int BASE_HEALTH = 3;
+    private static final String HEALTH_SUPERFICIAL_KEY = "healthsuperficial";
+    private static final String HEALTH_AGGRAVATED_KEY = "healthaggravated";
+    private static final String WILLPOWER_KEY = "willpower";
+    private static final String STAMINA_KEY = "stamina";
+    private static final String COMPOSURE_KEY = "composure";
+    private static final String RESOLVE_KEY = "resolve";
 
-    private final Map<String, String> values;
-    private final String imageUrl;
-    private final String name;
-    private final boolean botOwned;
-
-    public CharacterSheet(Map<String, String> values, String imageUrl, String name, boolean botOwned) {
-        this.values = new LinkedHashMap<>(values);
-        this.imageUrl = imageUrl;
-        this.name = name;
-        this.botOwned = botOwned;
+    public CharacterSheet {
+        values = new LinkedHashMap<>(values);
     }
 
     public int hunger() {
         return getValue(HUNGER_KEY).orElse(DEFAULT_HUNGER);
+    }
+
+    public int healthMax() {
+        return getValue(STAMINA_KEY).orElse(0) + BASE_HEALTH;
+    }
+
+    public int willpowerMax() {
+        return getValue(COMPOSURE_KEY).orElse(0) + getValue(RESOLVE_KEY).orElse(0);
+    }
+
+    public int currentWillpower() {
+        return getValue(WILLPOWER_KEY).orElse(willpowerMax());
     }
 
     public OptionalInt getValue(String key) {
@@ -111,22 +127,31 @@ public final class CharacterSheet {
     }
 
     public String describe() {
-        return values.entrySet().stream()
-            .map(entry -> entry.getKey() + "=" + entry.getValue())
-            .reduce((left, right) -> left + ", " + right)
-            .orElse("No stats found.");
+        String displayName = name != null && !name.isBlank() ? name : "Character";
+        return displayName + "\n"
+            + hungerSummary() + "\n"
+            + healthSummary() + "\n"
+            + willpowerSummary();
     }
 
-    public String imageUrl() {
-        return imageUrl;
+    public String hungerSummary() {
+        int hunger = hunger();
+        return "Hunger: " + renderTrack(hunger, 5, "\uD83D\uDD34", "\u26AA") + " (" + hunger + "/5)";
     }
 
-    public String name() {
-        return name;
+    public String healthSummary() {
+        int healthMax = healthMax();
+        int superficial = getValue(HEALTH_SUPERFICIAL_KEY).orElse(0);
+        int aggravated = getValue(HEALTH_AGGRAVATED_KEY).orElse(0);
+        return "Health: " + renderHealthTrack(superficial, aggravated, healthMax)
+            + " (" + superficial + " superficial, " + aggravated + " aggravated)";
     }
 
-    public boolean botOwned() {
-        return botOwned;
+    public String willpowerSummary() {
+        int willpower = currentWillpower();
+        int willpowerMax = willpowerMax();
+        return "Willpower: " + renderTrack(Math.max(0, Math.min(willpower, willpowerMax)), willpowerMax, "\uD83D\uDD35", "\u26AB")
+            + " (" + willpower + "/" + willpowerMax + ")";
     }
 
     public static String normalizeKey(String key) {
@@ -134,5 +159,28 @@ public final class CharacterSheet {
             .replace(" ", "")
             .replace("_", "")
             .trim();
+    }
+
+    private String renderHealthTrack(int superficial, int aggravated, int max) {
+        if (max < 1) {
+            return "-";
+        }
+
+        int safeAggravated = Math.max(0, Math.min(aggravated, max));
+        int safeSuperficial = Math.max(0, Math.min(superficial, Math.max(0, max - safeAggravated)));
+        int empty = Math.max(0, max - safeAggravated - safeSuperficial);
+
+        return "\uD83D\uDFE5".repeat(safeAggravated)
+            + "\uD83D\uDFE7".repeat(safeSuperficial)
+            + "\u2B1C".repeat(empty);
+    }
+
+    private String renderTrack(int filled, int max, String filledEmoji, String emptyEmoji) {
+        if (max < 1) {
+            return "-";
+        }
+
+        int safeFilled = Math.max(0, Math.min(filled, max));
+        return filledEmoji.repeat(safeFilled) + emptyEmoji.repeat(max - safeFilled);
     }
 }
