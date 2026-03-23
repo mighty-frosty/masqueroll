@@ -22,12 +22,12 @@ public final class StatusBannerRenderer {
     private static final int INNER_PADDING_Y = 8;
     private static final int LINE_GAP = 2;
     private static final Color BACKGROUND = new Color(18, 18, 20);
-    private static final Color SUCCESS_BACKGROUND = new Color(18, 59, 34);
-    private static final Color FAILURE_BACKGROUND = new Color(99, 18, 18);
-    private static final Color SUCCESS_BORDER = new Color(79, 156, 98);
-    private static final Color FAILURE_BORDER = new Color(186, 32, 32);
-    private static final Color SUCCESS_TEXT = new Color(223, 242, 220);
-    private static final Color FAILURE_TEXT = new Color(255, 232, 232);
+    private static final Color SUCCESS_BACKGROUND = new Color(31, 50, 40);
+    private static final Color FAILURE_BACKGROUND = new Color(79, 23, 23);
+    private static final Color SUCCESS_BORDER = new Color(106, 132, 112);
+    private static final Color FAILURE_BORDER = new Color(138, 55, 55);
+    private static final Color SUCCESS_TEXT = new Color(235, 225, 204);
+    private static final Color FAILURE_TEXT = new Color(247, 226, 214);
 
     private final Font successFont;
     private final Font failureFont;
