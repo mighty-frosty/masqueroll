@@ -56,12 +56,12 @@ public final class RollImageRenderer {
         }
         this.enabled = loaded;
         Path fontsDirectory = imageDirectory.resolveSibling("fonts");
-        this.titleFont = loadFont(List.of(fontsDirectory.resolve("CinzelDecorative-Bold.ttf")), 24f,
-            new Font("Palatino Linotype", Font.PLAIN, 24));
+        this.titleFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 24f,
+            new Font("Serif", Font.BOLD, 24));
         this.successFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 15f,
             new Font("Serif", Font.BOLD, 15));
-        this.rowFont = loadFont(List.of(fontsDirectory.resolve("Cinzel-Bold.ttf")), 12f,
-            new Font("Dialog", Font.BOLD, 12));
+        this.rowFont = loadFont(List.of(fontsDirectory.resolve("Cormorant.ttf")), 12f,
+            new Font("Serif", Font.BOLD, 12));
         this.alertFont = loadFont(
             List.of(
                 fontsDirectory.resolve("Bloodthirsty.ttf")
