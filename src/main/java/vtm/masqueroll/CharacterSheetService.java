@@ -86,16 +86,21 @@ public final class CharacterSheetService {
         Consumer<CharacterSheet> onSuccess,
         Consumer<String> onFailure
     ) {
-        if (value < 0) {
-            onFailure.accept("Stats cannot be negative.");
-            return;
-        }
-        if (CharacterSheet.normalizeKey(stat).equals("hunger") && value > 5) {
-            onFailure.accept("Hunger cannot be greater than 5.");
-            return;
-        }
+        findSheetMessage(
+            guild,
+            userId,
+            message -> {
+                CharacterSheet sheet = parseSheet(message);
+                String validationError = validateStatUpdate(sheet, stat, value);
+                if (validationError != null) {
+                    onFailure.accept(validationError);
+                    return;
+                }
 
-        updateSheetLine(guild, userId, stat, Integer.toString(value), onSuccess, onFailure);
+                editSheetMessage(message, replaceLine(message.getContentRaw(), stat, Integer.toString(value)), onSuccess, onFailure);
+            },
+            onFailure
+        );
     }
 
     public void adjustStat(
@@ -114,7 +119,7 @@ public final class CharacterSheetService {
             message -> {
                 CharacterSheet sheet = parseSheet(message);
                 int current = currentStatValue(sheet, stat);
-                int updated = Math.max(minValue, Math.min(maxValue, current + delta));
+                int updated = clampStatValue(sheet, stat, Math.max(minValue, Math.min(maxValue, current + delta)));
                 editSheetMessage(message, replaceLine(message.getContentRaw(), stat, Integer.toString(updated)), onSuccess, onFailure);
             },
             onFailure
@@ -266,11 +271,17 @@ public final class CharacterSheetService {
         }
 
         if (location.forumChannel() != null) {
-            List<ThreadChannel> posts = guild.getThreadChannels().stream()
+            List<ThreadChannel> activePosts = guild.getThreadChannels().stream()
                 .filter(thread -> thread.getParentChannel().getIdLong() == location.forumChannel().getIdLong())
                 .toList();
-
-            searchForumPosts(posts, 0, userId, onSuccess, onFailure);
+            location.forumChannel().retrieveArchivedPublicThreadChannels().queue(
+                archivedPosts -> {
+                    List<ThreadChannel> posts = new ArrayList<>(activePosts);
+                    posts.addAll(archivedPosts);
+                    searchForumPosts(posts, 0, userId, onSuccess, onFailure);
+                },
+                failure -> searchForumPosts(activePosts, 0, userId, onSuccess, onFailure)
+            );
             return;
         }
 
@@ -373,44 +384,10 @@ public final class CharacterSheetService {
     }
 
     private CharacterSheet parseSheet(Message message) {
-        Map<String, String> values = new LinkedHashMap<>();
-        String content = message.getContentRaw();
-        String name = null;
-
-        for (String rawLine : content.lines().toList()) {
-            String line = rawLine.trim();
-            if (!line.contains("=")) {
-                continue;
-            }
-
-            String[] parts = line.split("=", 2);
-            if (parts.length != 2) {
-                continue;
-            }
-
-            String key = CharacterSheet.normalizeKey(parts[0]);
-            switch (key) {
-                case "user" -> {
-                    continue;
-                }
-                case "name" -> {
-                    name = parts[1].trim();
-                    continue;
-                }
-                case "image" -> {
-                    values.put(key, parts[1].trim());
-                    continue;
-                }
-            }
-
-            values.put(key, CharacterSheet.normalizeKey(parts[1]));
-        }
-
-        String imageUrl = values.get("image");
-        if ((imageUrl == null || imageUrl.isEmpty()) && !message.getAttachments().isEmpty()) {
-            imageUrl = message.getAttachments().getFirst().getUrl();
-        }
-        return new CharacterSheet(values, imageUrl, name, message.getAuthor().isBot());
+        String imageUrl = message.getAttachments().isEmpty()
+            ? null
+            : message.getAttachments().getFirst().getUrl();
+        return parseSheetContent(message.getContentRaw(), imageUrl, message.getAuthor().isBot());
     }
 
     private String buildDefaultSheet(User user, String displayName, String imageUrl) {
@@ -606,6 +583,10 @@ public final class CharacterSheetService {
     }
 
     private CharacterSheet parseRawSheet(String content) {
+        return parseSheetContent(content, null, true);
+    }
+
+    private CharacterSheet parseSheetContent(String content, String fallbackImageUrl, boolean botOwned) {
         Map<String, String> values = new LinkedHashMap<>();
         String name = null;
 
@@ -638,7 +619,12 @@ public final class CharacterSheetService {
             values.put(key, CharacterSheet.normalizeKey(parts[1]));
         }
 
-        return new CharacterSheet(values, values.get("image"), name, true);
+        String imageUrl = values.get("image");
+        if ((imageUrl == null || imageUrl.isEmpty()) && fallbackImageUrl != null && !fallbackImageUrl.isBlank()) {
+            imageUrl = fallbackImageUrl;
+        }
+
+        return new CharacterSheet(values, imageUrl, name, botOwned);
     }
 
     private boolean isCoreStat(String normalizedKey) {
@@ -689,6 +675,59 @@ public final class CharacterSheetService {
             return sheet.currentWillpower();
         }
         return sheet.getValue(stat).orElse(0);
+    }
+
+    private int clampStatValue(CharacterSheet sheet, String stat, int value) {
+        String normalized = CharacterSheet.normalizeKey(stat);
+        return switch (normalized) {
+            case "hunger" -> clamp(value, 0, 5);
+            case "willpower" -> clamp(value, 0, Math.max(0, sheet.willpowerMax()));
+            case "healthsuperficial" -> {
+                int aggravated = sheet.getValue("health_aggravated").orElse(0);
+                yield clamp(value, 0, Math.max(0, sheet.healthMax() - aggravated));
+            }
+            case "healthaggravated" -> {
+                int superficial = sheet.getValue("health_superficial").orElse(0);
+                yield clamp(value, 0, Math.max(0, sheet.healthMax() - superficial));
+            }
+            default -> Math.max(0, value);
+        };
+    }
+
+    private String validateStatUpdate(CharacterSheet sheet, String stat, int value) {
+        String normalized = CharacterSheet.normalizeKey(stat);
+        if (value < 0) {
+            return "Stats cannot be negative.";
+        }
+
+        return switch (normalized) {
+            case "hunger" -> value > 5 ? "Hunger cannot be greater than 5." : null;
+            case "willpower" -> value > sheet.willpowerMax()
+                ? "Willpower cannot be greater than composure + resolve (" + sheet.willpowerMax() + ")."
+                : null;
+            case "healthsuperficial" -> validateHealthTrack(
+                value,
+                sheet.getValue("health_aggravated").orElse(0),
+                sheet.healthMax()
+            );
+            case "healthaggravated" -> validateHealthTrack(
+                value,
+                sheet.getValue("health_superficial").orElse(0),
+                sheet.healthMax()
+            );
+            default -> null;
+        };
+    }
+
+    private String validateHealthTrack(int updatedValue, int otherTrack, int maxHealth) {
+        if (updatedValue + otherTrack > maxHealth) {
+            return "Total health damage cannot be greater than stamina + 3 (" + maxHealth + ").";
+        }
+        return updatedValue < 0 ? "Health damage cannot be negative." : null;
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private record SheetLocation(GuildMessageChannel messageChannel, ForumChannel forumChannel) {

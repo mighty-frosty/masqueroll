@@ -79,7 +79,7 @@ Use `!help` or `/help` for a quick in-Discord summary.
 - `!v <stat> + <stat>`
 - `!v <macro>`
 - `!v <macro> +2`
-- `/roll pool:<number> hunger:<number> difficulty:<number>`
+- `/v pool:<number> hunger:<number> difficulty:<number>`
 
 Examples:
 

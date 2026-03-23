@@ -9,7 +9,7 @@ import lombok.experimental.Accessors;
 @Accessors(fluent = true)
 public enum BotCommand {
     HELP("help", "!help", "Show a summary of bot commands.", null),
-    ROLL("roll", "!v", "Roll Vampire: The Masquerade dice.", "Usage: `!v <pool> [hunger] [difficulty]`"),
+    ROLL("v", "!v", "Roll Vampire: The Masquerade dice.", "Usage: `!v <pool> [hunger] [difficulty]`"),
     ROUSE("rouse", "!rouse", "Make a rouse check.", null),
     CHARACTER("character", "!character", "Create your bot-managed character sheet.", null),
     SET("set", "!set", "Set a stat on your bot-managed character sheet.", "Usage: `!set <stat> <value>`"),

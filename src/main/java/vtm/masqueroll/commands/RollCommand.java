@@ -53,7 +53,7 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                 event.getGuild(),
                 event.getAuthor().getId(),
                 sheet -> executeRoll(event, numericRequest.pool(), sheet.hunger(), numericRequest.difficulty(), sheet.imageUrl(), sheet.name()),
-                error -> event.getChannel().sendMessage(error).queue()
+                error -> executeRoll(event, numericRequest.pool(), 0, numericRequest.difficulty(), null, null)
             );
             return;
         }
@@ -81,15 +81,31 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
     @Override
     public void handleSlash(SlashCommandInteractionEvent event) {
         int pool = event.getOption("pool").getAsInt();
-        int hunger = event.getOption("hunger") != null ? event.getOption("hunger").getAsInt() : 0;
+        Integer explicitHunger = event.getOption("hunger") != null ? event.getOption("hunger").getAsInt() : null;
         Integer difficulty = event.getOption("difficulty") != null ? event.getOption("difficulty").getAsInt() : null;
 
-        try {
-            RollSummary summary = VtmDiceRoller.roll(pool, hunger, difficulty);
-            replyWithRoll(event, pool, hunger, difficulty, summary);
-        } catch (IllegalArgumentException ex) {
-            event.reply(ex.getMessage()).setEphemeral(true).queue();
-        }
+        context.characterSheetService().findSheet(
+            event.getGuild(),
+            event.getUser().getId(),
+            sheet -> {
+                int hunger = explicitHunger != null ? explicitHunger : sheet.hunger();
+                try {
+                    RollSummary summary = VtmDiceRoller.roll(pool, hunger, difficulty);
+                    replyWithRoll(event, pool, hunger, difficulty, summary, sheet.imageUrl(), sheet.name());
+                } catch (IllegalArgumentException ex) {
+                    event.reply(ex.getMessage()).setEphemeral(true).queue();
+                }
+            },
+            error -> {
+                try {
+                    int hunger = explicitHunger != null ? explicitHunger : 0;
+                    RollSummary summary = VtmDiceRoller.roll(pool, hunger, difficulty);
+                    replyWithRoll(event, pool, hunger, difficulty, summary, null, null);
+                } catch (IllegalArgumentException ex) {
+                    event.reply(ex.getMessage()).setEphemeral(true).queue();
+                }
+            }
+        );
     }
 
     @Override
@@ -260,9 +276,17 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         action.queue();
     }
 
-    private void replyWithRoll(SlashCommandInteractionEvent event, int pool, int hunger, Integer difficulty, RollSummary summary) {
-        MessageEmbed embed = buildEmbed(summary, null, null);
-        List<Button> buttons = buildRerollButtons(event.getUser().getId(), event.getGuild(), pool, hunger, difficulty, summary, null, null);
+    private void replyWithRoll(
+        SlashCommandInteractionEvent event,
+        int pool,
+        int hunger,
+        Integer difficulty,
+        RollSummary summary,
+        String sheetImageUrl,
+        String characterName
+    ) {
+        MessageEmbed embed = buildEmbed(summary, sheetImageUrl, characterName);
+        List<Button> buttons = buildRerollButtons(event.getUser().getId(), event.getGuild(), pool, hunger, difficulty, summary, sheetImageUrl, characterName);
         if (context.imageRenderer().isEnabled()) {
             byte[] imageBytes = context.imageRenderer().render(summary);
             var action = event.replyFiles(FileUpload.fromData(imageBytes, "roll-result.png")).addEmbeds(embed);
