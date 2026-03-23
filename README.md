@@ -279,7 +279,9 @@ It will:
 
 - build `target/masqueroll.jar`
 - copy it to `/home/opc/masqueroll/masqueroll.jar`
-- restart `masqueroll.service` on the server
+- stop the previous bot process if one is running
+- start the new jar in the background
+- write logs to `/home/opc/masqueroll/bot.log`
 
 ### GitHub secrets
 
@@ -309,23 +311,7 @@ DISCORD_BOT_TOKEN=your-token-here
 EOF
 ```
 
-4. Copy the service file from `deploy/masqueroll.service` to the server:
-
-```bash
-sudo cp deploy/masqueroll.service /etc/systemd/system/masqueroll.service
-```
-
-If you do this directly on the server instead, use the same contents and make sure `User` and the `/home/opc/masqueroll` paths match your setup.
-
-5. Enable the service:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable masqueroll.service
-sudo systemctl start masqueroll.service
-```
-
-6. After that, every push to `main` will deploy automatically.
+4. After that, every push to `main` will deploy automatically.
 
 ## Notes
 

@@ -42,5 +42,12 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             mkdir -p /home/${{ secrets.ORACLE_USER }}/masqueroll
-            sudo systemctl restart masqueroll.service
-            sudo systemctl status masqueroll.service --no-pager
+            if [ ! -f /home/${{ secrets.ORACLE_USER }}/masqueroll/.env ]; then
+              echo ".env file not found at /home/${{ secrets.ORACLE_USER }}/masqueroll/.env"
+              exit 1
+            fi
+            pkill -f '/home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar' || true
+            nohup /usr/bin/java -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar \
+              > /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log 2>&1 &
+            sleep 3
+            pgrep -f '/home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar'
