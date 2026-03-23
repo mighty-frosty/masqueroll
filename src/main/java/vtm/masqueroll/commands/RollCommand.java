@@ -45,7 +45,12 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
         RollRequest numericRequest = tryParseNumericRoll(args);
         if (numericRequest != null) {
             if (numericRequest.hunger() != null) {
-                executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), null, null);
+                context.characterSheetService().findSheet(
+                    event.getGuild(),
+                    event.getAuthor().getId(),
+                    sheet -> executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), sheet.imageUrl(), sheet.name()),
+                    error -> executeRoll(event, numericRequest.pool(), numericRequest.hunger(), numericRequest.difficulty(), null, null)
+                );
                 return;
             }
 
