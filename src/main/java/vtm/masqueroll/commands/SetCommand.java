@@ -22,6 +22,9 @@ public record SetCommand(CommandContext context) implements Command {
 
         if (parts[0].equalsIgnoreCase("image")) {
             String imageUrl = args.substring(parts[0].length()).trim();
+            if (imageUrl.startsWith("=")) {
+                imageUrl = imageUrl.substring(1).trim();
+            }
             if (imageUrl.isEmpty()) {
                 event.getChannel().sendMessage("Usage: `!set image <url>`").queue();
                 return;

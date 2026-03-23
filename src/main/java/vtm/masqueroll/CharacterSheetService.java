@@ -448,6 +448,14 @@ public final class CharacterSheetService {
         String imageUrl = message.getAttachments().isEmpty()
             ? null
             : message.getAttachments().getFirst().getUrl();
+        if ((imageUrl == null || imageUrl.isBlank()) && !message.getEmbeds().isEmpty()) {
+            var firstEmbed = message.getEmbeds().getFirst();
+            if (firstEmbed.getImage() != null) {
+                imageUrl = firstEmbed.getImage().getUrl();
+            } else if (firstEmbed.getThumbnail() != null) {
+                imageUrl = firstEmbed.getThumbnail().getUrl();
+            }
+        }
         return parseSheetContent(message.getContentRaw(), imageUrl, message.getAuthor().isBot());
     }
 
