@@ -39,24 +39,50 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/oracle_vm <<EOF
+          ${{ secrets.ORACLE_SSH_KEY }}
+          EOF
+          chmod 600 ~/.ssh/oracle_vm
+
       - name: Deploy container on Oracle VM
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
-          script: |
-            set -e
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "Docker not found on VM."
-              exit 1
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          SSH_OPTS="-i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3"
+          for attempt in 1 2 3; do
+            echo "Deploy attempt $attempt..."
+            if ssh $SSH_OPTS "$ORACLE_USER@$ORACLE_HOST" \
+              "GHCR_USERNAME='$GHCR_USERNAME' GHCR_TOKEN='$GHCR_TOKEN' DISCORD_BOT_TOKEN='$DISCORD_BOT_TOKEN' IMAGE_NAME='$IMAGE_NAME' bash -s" <<'EOF'
+          set -e
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Docker not found on VM."
+            exit 1
+          fi
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+          docker pull "$IMAGE_NAME:latest"
+          docker rm -f masqueroll || true
+          docker run -d \
+            --name masqueroll \
+            --restart unless-stopped \
+            -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+            "$IMAGE_NAME:latest"
+          docker ps --filter name=masqueroll
+          EOF
+            then
+              exit 0
             fi
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
-            docker pull ${{ env.IMAGE_NAME }}:latest
-            docker rm -f masqueroll || true
-            docker run -d \
-              --name masqueroll \
-              --restart unless-stopped \
-              -e DISCORD_BOT_TOKEN="${{ secrets.DISCORD_BOT_TOKEN }}" \
-              ${{ env.IMAGE_NAME }}:latest
-            docker ps --filter name=masqueroll
+            echo "Deploy attempt $attempt failed."
+            if [ "$attempt" -lt 3 ]; then
+              sleep 15
+            fi
+          done
+          echo "Deployment failed after 3 attempts."
+          exit 1
