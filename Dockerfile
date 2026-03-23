@@ -12,5 +12,6 @@ WORKDIR /app
 
 COPY --from=build /app/target/masqueroll.jar /app/masqueroll.jar
 COPY src/images /app/src/images
+COPY src/fonts /app/src/fonts
 
 ENTRYPOINT ["java", "-jar", "/app/masqueroll.jar"]
