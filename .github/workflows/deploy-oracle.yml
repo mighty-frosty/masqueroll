@@ -7,14 +7,11 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/masqueroll
+  IMAGE_NAME: masqueroll:${{ github.sha }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Check out repository
@@ -23,21 +20,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build container image
+        run: docker build -t "${IMAGE_NAME}" .
 
-      - name: Build and push container image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Export container image
+        run: docker save "${IMAGE_NAME}" -o masqueroll-image.tar
 
       - name: Prepare SSH key
         run: |
@@ -47,12 +34,17 @@ jobs:
           EOF
           chmod 600 ~/.ssh/oracle_vm
 
+      - name: Copy image tarball to Oracle VM
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+        run: |
+          scp -i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no masqueroll-image.tar "$ORACLE_USER@$ORACLE_HOST:/tmp/masqueroll-image.tar"
+
       - name: Deploy container on Oracle VM
         env:
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
@@ -60,7 +52,7 @@ jobs:
           for attempt in 1 2 3; do
             echo "Deploy attempt $attempt..."
             if ssh $SSH_OPTS "$ORACLE_USER@$ORACLE_HOST" \
-              "GHCR_USERNAME='$GHCR_USERNAME' GHCR_TOKEN='$GHCR_TOKEN' DISCORD_BOT_TOKEN='$DISCORD_BOT_TOKEN' IMAGE_NAME='$IMAGE_NAME' bash -s" <<'EOF'
+              "DISCORD_BOT_TOKEN='$DISCORD_BOT_TOKEN' IMAGE_NAME='$IMAGE_NAME' bash -s" <<'EOF'
           set -e
           if ! command -v docker >/dev/null 2>&1; then
             echo "Docker not found on VM. Installing Docker..."
@@ -68,22 +60,21 @@ jobs:
             sudo apt install -y docker.io
             sudo systemctl enable --now docker
           fi
-          if [ -z "$GHCR_USERNAME" ]; then
-            echo "GHCR_USERNAME is empty."
+          if [ ! -f /tmp/masqueroll-image.tar ]; then
+            echo "Image tarball not found on VM."
             exit 1
           fi
-          if [ -z "$GHCR_TOKEN" ]; then
-            echo "GHCR_TOKEN is empty."
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "DISCORD_BOT_TOKEN is empty."
             exit 1
           fi
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-          docker pull "$IMAGE_NAME:latest"
+          docker load -i /tmp/masqueroll-image.tar
           docker rm -f masqueroll || true
           docker run -d \
             --name masqueroll \
             --restart unless-stopped \
             -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
-            "$IMAGE_NAME:latest"
+            "$IMAGE_NAME"
           docker ps --filter name=masqueroll
           EOF
             then

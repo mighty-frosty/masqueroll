@@ -278,9 +278,10 @@ You can deploy automatically to your Oracle VM with the workflow in:
 It will:
 
 - build a Docker image
-- push it to GitHub Container Registry (`ghcr.io`)
+- export it as a tarball
+- copy the tarball to your Oracle VM
 - SSH into your Oracle VM
-- pull the latest image
+- load the image locally on the VM
 - restart the `masqueroll` container with your bot token
 
 ### GitHub secrets
@@ -295,10 +296,6 @@ Add these repository secrets:
   - the full private SSH key contents
 - `DISCORD_BOT_TOKEN`
   - your Discord bot token
-- `GHCR_USERNAME`
-  - the GitHub username that can read the package
-- `GHCR_TOKEN`
-  - a GitHub token or PAT with package read access on the VM deploy side
 
 ### Oracle VM setup
 
