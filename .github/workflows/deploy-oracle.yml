@@ -68,14 +68,14 @@ jobs:
             echo "DISCORD_BOT_TOKEN is empty."
             exit 1
           fi
-          docker load -i /tmp/masqueroll-image.tar
-          docker rm -f masqueroll || true
-          docker run -d \
+          sudo docker load -i /tmp/masqueroll-image.tar
+          sudo docker rm -f masqueroll || true
+          sudo docker run -d \
             --name masqueroll \
             --restart unless-stopped \
             -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
             "$IMAGE_NAME"
-          docker ps --filter name=masqueroll
+          sudo docker ps --filter name=masqueroll
           EOF
             then
               exit 0
