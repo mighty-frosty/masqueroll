@@ -15,13 +15,15 @@ public record SetCommand(CommandContext context) implements Command {
     public void handleMessage(MessageReceivedEvent event, String content) {
         String args = content.substring(BotCommand.SET.prefixCommand().length()).trim();
         String[] parts = args.split("\\s+", 3);
-        if (parts.length < 2) {
+        if (parts.length < 1 || args.isEmpty()) {
             event.getChannel().sendMessage(BotCommand.SET.usage()).queue();
             return;
         }
 
         if (parts[0].equalsIgnoreCase("image")) {
-            String imageUrl = args.substring(parts[0].length()).trim();
+            String imageUrl = args.length() > parts[0].length()
+                ? args.substring(parts[0].length()).trim()
+                : "";
             if (imageUrl.startsWith("=")) {
                 imageUrl = imageUrl.substring(1).trim();
             }
