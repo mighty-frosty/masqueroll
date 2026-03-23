@@ -17,7 +17,7 @@
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>5.6.1</version>
+            <version>6.3.2</version>
         </dependency>
         <dependency>
             <groupId>io.github.cdimascio</groupId>
@@ -46,7 +46,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.1</version>
                 <configuration>
-                    <mainClass>vtm.abbioccatore.AbbioccatoreBot</mainClass>
+                    <mainClass>vtm.masqueroll.MasquerollBot</mainClass>
                 </configuration>
             </plugin>
         </plugins>
