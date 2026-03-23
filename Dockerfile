@@ -11,5 +11,6 @@ FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 COPY --from=build /app/target/masqueroll.jar /app/masqueroll.jar
+COPY src/images /app/src/images
 
 ENTRYPOINT ["java", "-jar", "/app/masqueroll.jar"]
