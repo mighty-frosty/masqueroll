@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +36,9 @@ public final class RollImageRenderer {
     @Getter
     private final boolean enabled;
     private final Font titleFont;
-    private final Font accentFont;
+    private final Font successFont;
     private final Font rowFont;
+    private final Font alertFont;
 
     public RollImageRenderer(Path imageDirectory) {
         boolean loaded;
@@ -53,12 +55,20 @@ public final class RollImageRenderer {
             loaded = false;
         }
         this.enabled = loaded;
-        this.titleFont = loadFont(imageDirectory.resolveSibling("fonts").resolve("CinzelDecorative-Bold.ttf"), 24f,
+        Path fontsDirectory = imageDirectory.resolveSibling("fonts");
+        this.titleFont = loadFont(List.of(fontsDirectory.resolve("CinzelDecorative-Bold.ttf")), 24f,
             new Font("Palatino Linotype", Font.PLAIN, 24));
-        this.accentFont = loadFont(imageDirectory.resolveSibling("fonts").resolve("CormorantSC-Bold.ttf"), 15f,
+        this.successFont = loadFont(List.of(fontsDirectory.resolve("CormorantSC-Bold.ttf")), 15f,
             new Font("Serif", Font.BOLD, 15));
-        this.rowFont = loadFont(imageDirectory.resolveSibling("fonts").resolve("Cinzel-Bold.ttf"), 12f,
+        this.rowFont = loadFont(List.of(fontsDirectory.resolve("Cinzel-Bold.ttf")), 12f,
             new Font("Dialog", Font.BOLD, 12));
+        this.alertFont = loadFont(
+            List.of(
+                fontsDirectory.resolve("Bloodthirsty.ttf")
+            ),
+            17f,
+            new Font("Dialog", Font.BOLD, 17)
+        );
     }
 
     public byte[] render(RollSummary summary) {
@@ -106,8 +116,9 @@ public final class RollImageRenderer {
 
         String resultText = summary.resultLabel() == null ? "" : summary.resultLabel().text();
         if (!resultText.isEmpty()) {
-            graphics.setColor(summary.bestialFailure() ? ALERT_TEXT : SUBTLE_TEXT);
-            graphics.setFont(accentFont);
+            boolean alertResult = summary.bestialFailure() || summary.messyCritical();
+            graphics.setColor(alertResult ? ALERT_TEXT : SUBTLE_TEXT);
+            graphics.setFont(alertResult ? alertFont : successFont);
             FontMetrics metrics = graphics.getFontMetrics();
             int textWidth = metrics.stringWidth(resultText);
             graphics.drawString(resultText, width - PADDING - textWidth, 32);
@@ -181,11 +192,13 @@ public final class RollImageRenderer {
         }
     }
 
-    private Font loadFont(Path path, float size, Font fallback) {
-        if (Files.exists(path)) {
-            try (InputStream inputStream = Files.newInputStream(path)) {
-                return Font.createFont(Font.TRUETYPE_FONT, inputStream).deriveFont(size);
-            } catch (Exception ignored) {
+    private Font loadFont(List<Path> candidates, float size, Font fallback) {
+        for (Path path : candidates) {
+            if (Files.exists(path)) {
+                try (InputStream inputStream = Files.newInputStream(path)) {
+                    return Font.createFont(Font.TRUETYPE_FONT, inputStream).deriveFont(size);
+                } catch (Exception ignored) {
+                }
             }
         }
         return fallback.deriveFont(size);
