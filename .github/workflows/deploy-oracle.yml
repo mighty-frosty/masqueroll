@@ -6,37 +6,40 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/masqueroll
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          distribution: temurin
-          java-version: "25"
-          cache: maven
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build runnable jar
-        run: mvn -B package
-
-      - name: Copy jar to Oracle VM
-        uses: appleboy/scp-action@v0.1.7
+      - name: Build and push container image
+        uses: docker/build-push-action@v6
         with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
-          source: target/masqueroll.jar
-          target: /home/${{ secrets.ORACLE_USER }}/masqueroll/
-          strip_components: 1
-          overwrite: true
-          debug: true
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Restart bot process
+      - name: Deploy container on Oracle VM
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.ORACLE_HOST }}
@@ -44,40 +47,16 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             set -e
-            mkdir -p /home/${{ secrets.ORACLE_USER }}/masqueroll
-            cat > /home/${{ secrets.ORACLE_USER }}/masqueroll/.env <<EOF
-            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
-            EOF
-            if [ ! -s /home/${{ secrets.ORACLE_USER }}/masqueroll/.env ]; then
-              echo ".env file could not be created."
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found on VM."
               exit 1
             fi
-            if [ ! -f /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar ]; then
-              echo "masqueroll.jar not found."
-              exit 1
-            fi
-            if ! command -v java >/dev/null 2>&1; then
-              echo "Java not found on VM. Installing Java 25..."
-              sudo dnf install -y java-25-openjdk
-            fi
-            JAVA_BIN=$(command -v java)
-            if [ -z "$JAVA_BIN" ]; then
-              echo "Java is still not available after installation."
-              exit 1
-            fi
-            "$JAVA_BIN" -version
-            APP_CMD="$JAVA_BIN -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar"
-            EXISTING_PIDS=$(pgrep -f "^${APP_CMD}$" || true)
-            if [ -n "$EXISTING_PIDS" ]; then
-              kill $EXISTING_PIDS || true
-              sleep 2
-            fi
-            nohup "$JAVA_BIN" -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar \
-              > /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log 2>&1 < /dev/null &
-            sleep 5
-            if ! pgrep -f "^${APP_CMD}$" > /dev/null; then
-              echo "Bot process did not stay running. Recent log output:"
-              tail -n 50 /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log || true
-              exit 1
-            fi
-            echo "Masqueroll deployed successfully."
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            docker rm -f masqueroll || true
+            docker run -d \
+              --name masqueroll \
+              --restart unless-stopped \
+              -e DISCORD_BOT_TOKEN="${{ secrets.DISCORD_BOT_TOKEN }}" \
+              ${{ env.IMAGE_NAME }}:latest
+            docker ps --filter name=masqueroll

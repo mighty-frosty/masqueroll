@@ -269,7 +269,7 @@ This produces a runnable fat jar at:
 target/masqueroll.jar
 ```
 
-## GitHub Deploy
+## Docker Deploy
 
 You can deploy automatically to your Oracle VM with the workflow in:
 
@@ -277,13 +277,11 @@ You can deploy automatically to your Oracle VM with the workflow in:
 
 It will:
 
-- build `target/masqueroll.jar`
-- copy it to `/home/opc/masqueroll/masqueroll.jar`
-- write `/home/opc/masqueroll/.env` from your GitHub secret
-- install Java 25 on the VM if `java` is missing
-- stop the previous bot process if one is running
-- start the new jar in the background
-- write logs to `/home/opc/masqueroll/bot.log`
+- build a Docker image
+- push it to GitHub Container Registry (`ghcr.io`)
+- SSH into your Oracle VM
+- pull the latest image
+- restart the `masqueroll` container with your bot token
 
 ### GitHub secrets
 
@@ -297,17 +295,26 @@ Add these repository secrets:
   - the full private SSH key contents
 - `DISCORD_BOT_TOKEN`
   - your Discord bot token
+- `GHCR_USERNAME`
+  - the GitHub username that can read the package
+- `GHCR_TOKEN`
+  - a GitHub token or PAT with package read access on the VM deploy side
 
 ### Oracle VM setup
 
-1. Make sure your SSH user can run `sudo dnf install` non-interactively.
-2. Create the app folder:
+1. Install Docker on the VM.
+2. Make sure your SSH user can run Docker commands.
 
 ```bash
-mkdir -p /home/opc/masqueroll
+sudo dnf install -y dnf-plugins-core
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+sudo usermod -aG docker opc
 ```
 
-3. After that, every push to `main` will deploy automatically.
+3. Log out and back in once so the `docker` group applies to `opc`.
+4. After that, every push to `main` will deploy automatically.
 
 ## Notes
 
