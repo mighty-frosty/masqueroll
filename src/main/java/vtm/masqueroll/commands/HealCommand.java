@@ -4,12 +4,13 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.utils.FileUpload;
 import vtm.masqueroll.BotCommand;
 import vtm.masqueroll.CharacterSheet;
 
 import java.awt.Color;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
+import java.util.concurrent.ThreadLocalRandom;
 
 public record HealCommand(CommandContext context) implements Command {
 
@@ -26,7 +27,7 @@ public record HealCommand(CommandContext context) implements Command {
         healDamage(
             event.getGuild(),
             event.getAuthor().getId(),
-            embed -> event.getChannel().sendMessageEmbeds(embed).queue(),
+            result -> sendMessage(event, result),
             error -> event.getChannel().sendMessage(error).queue()
         );
     }
@@ -41,7 +42,7 @@ public record HealCommand(CommandContext context) implements Command {
         healDamage(
             event.getGuild(),
             event.getUser().getId(),
-            embed -> event.replyEmbeds(embed).setEphemeral(true).queue(),
+            result -> reply(event, result),
             error -> event.reply(error).setEphemeral(true).queue()
         );
     }
@@ -49,7 +50,7 @@ public record HealCommand(CommandContext context) implements Command {
     private void healDamage(
         net.dv8tion.jda.api.entities.Guild guild,
         String userId,
-        Consumer<MessageEmbed> onSuccess,
+        Consumer<StatusResult> onSuccess,
         Consumer<String> onFailure
     ) {
         context.characterSheetService().findSheet(
@@ -79,11 +80,11 @@ public record HealCommand(CommandContext context) implements Command {
                                 1,
                                 0,
                                 5,
-                                hungerUpdated -> onSuccess.accept(buildEmbed(dieValue, hungerUpdated)),
+                                hungerUpdated -> onSuccess.accept(new StatusResult(dieValue, hungerUpdated)),
                                 onFailure
                             );
                         } else {
-                            onSuccess.accept(buildEmbed(dieValue, updatedSheet));
+                            onSuccess.accept(new StatusResult(dieValue, updatedSheet));
                         }
                     },
                     onFailure
@@ -97,7 +98,7 @@ public record HealCommand(CommandContext context) implements Command {
         boolean success = dieValue >= 6;
         EmbedBuilder builder = new EmbedBuilder()
             .setColor(success ? SUCCESS_COLOR : FAILURE_COLOR)
-            .setDescription(success ? "```diff\n+ HEAL SUCCESS\n```" : "```diff\n- HEAL WITH ROUSE FAILURE\n```")
+            .setImage("attachment://status-banner.png")
             .addField("Hunger", sheet.hungerSummary().replaceFirst("^Hunger: ", ""), false)
             .addField("Health", sheet.healthSummary().replaceFirst("^Health: ", ""), false)
             .addField("Willpower", sheet.willpowerSummary().replaceFirst("^Willpower: ", ""), false);
@@ -110,5 +111,28 @@ public record HealCommand(CommandContext context) implements Command {
         }
 
         return builder.build();
+    }
+
+    private void sendMessage(MessageReceivedEvent event, StatusResult result) {
+        boolean success = result.dieValue() >= 6;
+        String text = success ? "HEAL SUCCESS" : "HEAL WITH ROUSE FAILURE";
+        byte[] banner = context.statusBannerRenderer().render(text, success);
+        event.getChannel()
+            .sendFiles(FileUpload.fromData(banner, "status-banner.png"))
+            .setEmbeds(buildEmbed(result.dieValue(), result.sheet()))
+            .queue();
+    }
+
+    private void reply(SlashCommandInteractionEvent event, StatusResult result) {
+        boolean success = result.dieValue() >= 6;
+        String text = success ? "HEAL SUCCESS" : "HEAL WITH ROUSE FAILURE";
+        byte[] banner = context.statusBannerRenderer().render(text, success);
+        event.replyFiles(FileUpload.fromData(banner, "status-banner.png"))
+            .addEmbeds(buildEmbed(result.dieValue(), result.sheet()))
+            .setEphemeral(true)
+            .queue();
+    }
+
+    private record StatusResult(int dieValue, CharacterSheet sheet) {
     }
 }

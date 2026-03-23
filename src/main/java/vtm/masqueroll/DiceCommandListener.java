@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import vtm.masqueroll.dice.DiceDisplayConfig;
 import vtm.masqueroll.dice.PendingRoll;
 import vtm.masqueroll.dice.RollImageRenderer;
+import vtm.masqueroll.dice.StatusBannerRenderer;
 import vtm.masqueroll.commands.CharacterCommand;
 import vtm.masqueroll.commands.Command;
 import vtm.masqueroll.commands.CommandContext;
@@ -33,8 +34,9 @@ public final class DiceCommandListener extends ListenerAdapter {
     public DiceCommandListener(DiceDisplayConfig displayConfig, RollImageRenderer imageRenderer) {
         CharacterSheetService characterSheetService = new CharacterSheetService();
         Map<String, PendingRoll> pendingRolls = new ConcurrentHashMap<>();
+        StatusBannerRenderer statusBannerRenderer = new StatusBannerRenderer(java.nio.file.Path.of("src", "fonts"));
 
-        this.context = new CommandContext(characterSheetService, displayConfig, imageRenderer);
+        this.context = new CommandContext(characterSheetService, displayConfig, imageRenderer, statusBannerRenderer);
         this.commands = List.of(
             new HelpCommand(context),
             new RollCommand(context, pendingRolls),

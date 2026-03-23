@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.utils.FileUpload;
 import vtm.masqueroll.BotCommand;
 
 import java.awt.Color;
@@ -30,14 +31,14 @@ public record RouseCommand(CommandContext context) implements Command {
                     context.characterSheetService().incrementHunger(
                         event.getGuild(),
                         event.getAuthor().getId(),
-                        updatedSheet -> event.getChannel().sendMessageEmbeds(buildEmbed(dieValue, updatedSheet.imageUrl(), updatedSheet.name(), updatedSheet.hunger())).queue(),
-                        error -> event.getChannel().sendMessageEmbeds(buildEmbed(dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger())).queue()
+                        updatedSheet -> sendMessage(event, dieValue, updatedSheet.imageUrl(), updatedSheet.name(), updatedSheet.hunger()),
+                        error -> sendMessage(event, dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger())
                     );
                 } else {
-                    event.getChannel().sendMessageEmbeds(buildEmbed(dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger())).queue();
+                    sendMessage(event, dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger());
                 }
             },
-            error -> event.getChannel().sendMessageEmbeds(buildEmbed(rollRouse(), null, null, null)).queue()
+            error -> sendMessage(event, rollRouse(), null, null, null)
         );
     }
 
@@ -57,14 +58,14 @@ public record RouseCommand(CommandContext context) implements Command {
                     context.characterSheetService().incrementHunger(
                         event.getGuild(),
                         event.getUser().getId(),
-                        updatedSheet -> event.replyEmbeds(buildEmbed(dieValue, updatedSheet.imageUrl(), updatedSheet.name(), updatedSheet.hunger())).queue(),
-                        error -> event.replyEmbeds(buildEmbed(dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger())).queue()
+                        updatedSheet -> reply(event, dieValue, updatedSheet.imageUrl(), updatedSheet.name(), updatedSheet.hunger()),
+                        error -> reply(event, dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger())
                     );
                 } else {
-                    event.replyEmbeds(buildEmbed(dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger())).queue();
+                    reply(event, dieValue, sheet.imageUrl(), sheet.name(), sheet.hunger());
                 }
             },
-            error -> event.replyEmbeds(buildEmbed(rollRouse(), null, null, null)).queue()
+            error -> reply(event, rollRouse(), null, null, null)
         );
     }
 
@@ -76,7 +77,7 @@ public record RouseCommand(CommandContext context) implements Command {
         boolean success = dieValue >= 6;
         EmbedBuilder builder = new EmbedBuilder()
             .setColor(success ? SUCCESS_COLOR : FAILURE_COLOR)
-            .setDescription(success ? "```diff\n+ ROUSE SUCCESS\n```" : "```diff\n- ROUSE FAILURE\n```");
+            .setImage("attachment://status-banner.png");
 
         if (sheetImageUrl != null && !sheetImageUrl.isEmpty()) {
             builder.setThumbnail(sheetImageUrl);
@@ -88,5 +89,22 @@ public record RouseCommand(CommandContext context) implements Command {
             builder.setFooter("Hunger: " + hunger);
         }
         return builder.build();
+    }
+
+    private void sendMessage(MessageReceivedEvent event, int dieValue, String sheetImageUrl, String characterName, Integer hunger) {
+        boolean success = dieValue >= 6;
+        byte[] banner = context.statusBannerRenderer().render(success ? "ROUSE SUCCESS" : "ROUSE FAILURE", success);
+        event.getChannel()
+            .sendFiles(FileUpload.fromData(banner, "status-banner.png"))
+            .setEmbeds(buildEmbed(dieValue, sheetImageUrl, characterName, hunger))
+            .queue();
+    }
+
+    private void reply(SlashCommandInteractionEvent event, int dieValue, String sheetImageUrl, String characterName, Integer hunger) {
+        boolean success = dieValue >= 6;
+        byte[] banner = context.statusBannerRenderer().render(success ? "ROUSE SUCCESS" : "ROUSE FAILURE", success);
+        event.replyFiles(FileUpload.fromData(banner, "status-banner.png"))
+            .addEmbeds(buildEmbed(dieValue, sheetImageUrl, characterName, hunger))
+            .queue();
     }
 }

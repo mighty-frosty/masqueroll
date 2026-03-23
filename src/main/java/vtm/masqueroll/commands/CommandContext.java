@@ -4,11 +4,13 @@ import net.dv8tion.jda.api.entities.User;
 import vtm.masqueroll.CharacterSheetService;
 import vtm.masqueroll.dice.DiceDisplayConfig;
 import vtm.masqueroll.dice.RollImageRenderer;
+import vtm.masqueroll.dice.StatusBannerRenderer;
 
 public record CommandContext(
     CharacterSheetService characterSheetService,
     DiceDisplayConfig displayConfig,
-    RollImageRenderer imageRenderer
+    RollImageRenderer imageRenderer,
+    StatusBannerRenderer statusBannerRenderer
 ) {
 
     private static final String SHEET_TEMPLATE_MARKER = "[sheet-template]";
