@@ -226,6 +226,44 @@ public final class CharacterSheetService {
         );
     }
 
+    public void deleteSheet(
+        Guild guild,
+        String userId,
+        String characterName,
+        Consumer<String> onSuccess,
+        Consumer<String> onFailure
+    ) {
+        findSheetMessage(
+            guild,
+            userId,
+            message -> {
+                CharacterSheet sheet = parseSheet(message);
+                if (!message.getAuthor().isBot()) {
+                    onFailure.accept("This sheet is not bot-owned, so I won't delete it automatically.");
+                    return;
+                }
+                if (!namesMatch(sheet.name(), characterName)) {
+                    onFailure.accept("I found your sheet, but the name didn't match `" + characterName + "`.");
+                    return;
+                }
+
+                if (message.getChannel() instanceof ThreadChannel threadChannel) {
+                    threadChannel.delete().queue(
+                        ignored -> onSuccess.accept(characterName),
+                        failure -> onFailure.accept("I couldn't delete your character sheet right now.")
+                    );
+                    return;
+                }
+
+                message.delete().queue(
+                    ignored -> onSuccess.accept(characterName),
+                    failure -> onFailure.accept("I couldn't delete your character sheet right now.")
+                );
+            },
+            onFailure
+        );
+    }
+
     private void updateSheetLine(
         Guild guild,
         String userId,
@@ -381,6 +419,13 @@ public final class CharacterSheetService {
                     || line.equalsIgnoreCase(expectedMention)
                     || line.equalsIgnoreCase(expectedNicknameMention)
             );
+    }
+
+    private boolean namesMatch(String actualName, String requestedName) {
+        if (actualName == null || requestedName == null) {
+            return false;
+        }
+        return CharacterSheet.normalizeKey(actualName).equals(CharacterSheet.normalizeKey(requestedName));
     }
 
     private CharacterSheet parseSheet(Message message) {

@@ -37,6 +37,8 @@ public final class MasquerollBot {
             Commands.slash(BotCommand.CHARACTER.slashName(), BotCommand.CHARACTER.description())
                 .addOption(OptionType.STRING, "name", "Character name for the sheet", false)
                 .addOption(OptionType.ATTACHMENT, "image", "Optional character image", false),
+            Commands.slash(BotCommand.DELETE_CHARACTER.slashName(), BotCommand.DELETE_CHARACTER.description())
+                .addOption(OptionType.STRING, "name", "Character name to delete", true),
             Commands.slash(BotCommand.SET.slashName(), BotCommand.SET.description())
                 .addOption(OptionType.STRING, "stat", "Stat to set", true)
                 .addOption(OptionType.INTEGER, "value", "Value", true),

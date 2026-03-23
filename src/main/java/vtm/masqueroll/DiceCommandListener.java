@@ -12,6 +12,7 @@ import vtm.masqueroll.commands.CharacterCommand;
 import vtm.masqueroll.commands.Command;
 import vtm.masqueroll.commands.CommandContext;
 import vtm.masqueroll.commands.DamageCommand;
+import vtm.masqueroll.commands.DeleteCharacterCommand;
 import vtm.masqueroll.commands.HealCommand;
 import vtm.masqueroll.commands.HelpCommand;
 import vtm.masqueroll.commands.MacroCommand;
@@ -41,6 +42,7 @@ public final class DiceCommandListener extends ListenerAdapter {
             new HelpCommand(context),
             new RollCommand(context, pendingRolls),
             new CharacterCommand(context),
+            new DeleteCharacterCommand(context),
             new SetCommand(context),
             new MacroCommand(context),
             new RemoveMacroCommand(context),

@@ -32,6 +32,7 @@ public record CommandContext(
             **Masqueroll Commands**
             `!help` Show this help message
             `!character Michael` Create your sheet
+            `!delete Michael` Delete your own bot-managed sheet
             `!set <stat> <value>` Update one stat
             `!macro <name> = <formula>` Save a macro
             `!removemacro <name>` Remove a macro

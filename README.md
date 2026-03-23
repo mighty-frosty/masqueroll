@@ -96,12 +96,16 @@ Examples:
 
 - `!character`
 - `!character Michael`
+- `!delete Michael`
 - `/character`
 - `/character name:Michael image:<attachment>`
+- `/delete name:Michael`
 
 If you attach an image to `!character Michael`, the bot stores it on the sheet and uses it later as the roll thumbnail.
 
 After creating a character, the bot also sends you a full sheet template. Reply to that bot message with your filled-out sheet and it will update the entire character in one go.
+
+`!delete <name>` only deletes your own bot-managed sheet, and only if the provided name matches your current character name.
 
 ### Stats
 

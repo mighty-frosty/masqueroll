@@ -8,6 +8,7 @@ public sealed interface Command permits
     HelpCommand,
     RollCommand,
     CharacterCommand,
+    DeleteCharacterCommand,
     SetCommand,
     MacroCommand,
     RemoveMacroCommand,

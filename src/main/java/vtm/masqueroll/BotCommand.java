@@ -12,6 +12,7 @@ public enum BotCommand {
     ROLL("v", "!v", "Roll Vampire: The Masquerade dice.", "Usage: `!v <pool> [hunger] [difficulty]`"),
     ROUSE("rouse", "!rouse", "Make a rouse check.", null),
     CHARACTER("character", "!character", "Create your bot-managed character sheet.", null),
+    DELETE_CHARACTER("delete", "!delete", "Delete your bot-managed character sheet.", "Usage: `!delete <character name>`"),
     SET("set", "!set", "Set a stat on your bot-managed character sheet.", "Usage: `!set <stat> <value>`"),
     MACRO("macro", "!macro", "Set a macro on your bot-managed character sheet.", "Usage: `!macro <name> = <formula>`"),
     REMOVE_MACRO("removemacro", "!removemacro", "Remove a macro from your bot-managed character sheet.", "Usage: `!removemacro <name>`"),
