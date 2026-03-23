@@ -279,6 +279,7 @@ It will:
 
 - build `target/masqueroll.jar`
 - copy it to `/home/opc/masqueroll/masqueroll.jar`
+- write `/home/opc/masqueroll/.env` from your GitHub secret
 - stop the previous bot process if one is running
 - start the new jar in the background
 - write logs to `/home/opc/masqueroll/bot.log`
@@ -293,6 +294,8 @@ Add these repository secrets:
   - usually `opc`
 - `ORACLE_SSH_KEY`
   - the full private SSH key contents
+- `DISCORD_BOT_TOKEN`
+  - your Discord bot token
 
 ### Oracle VM setup
 
@@ -303,15 +306,7 @@ Add these repository secrets:
 mkdir -p /home/opc/masqueroll
 ```
 
-3. Create the runtime `.env`:
-
-```bash
-cat > /home/opc/masqueroll/.env <<'EOF'
-DISCORD_BOT_TOKEN=your-token-here
-EOF
-```
-
-4. After that, every push to `main` will deploy automatically.
+3. After that, every push to `main` will deploy automatically.
 
 ## Notes
 

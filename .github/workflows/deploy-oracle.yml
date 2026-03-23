@@ -42,8 +42,11 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             mkdir -p /home/${{ secrets.ORACLE_USER }}/masqueroll
-            if [ ! -f /home/${{ secrets.ORACLE_USER }}/masqueroll/.env ]; then
-              echo ".env file not found at /home/${{ secrets.ORACLE_USER }}/masqueroll/.env"
+            cat > /home/${{ secrets.ORACLE_USER }}/masqueroll/.env <<EOF
+            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+            EOF
+            if [ ! -s /home/${{ secrets.ORACLE_USER }}/masqueroll/.env ]; then
+              echo ".env file could not be created."
               exit 1
             fi
             pkill -f '/home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar' || true
