@@ -41,6 +41,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
+            set -e
             mkdir -p /home/${{ secrets.ORACLE_USER }}/masqueroll
             cat > /home/${{ secrets.ORACLE_USER }}/masqueroll/.env <<EOF
             DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
@@ -49,6 +50,11 @@ jobs:
               echo ".env file could not be created."
               exit 1
             fi
+            if [ ! -f /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar ]; then
+              echo "masqueroll.jar not found."
+              exit 1
+            fi
+            /usr/bin/java -version
             APP_CMD="/usr/bin/java -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar"
             EXISTING_PIDS=$(pgrep -f "^${APP_CMD}$" || true)
             if [ -n "$EXISTING_PIDS" ]; then
@@ -59,4 +65,9 @@ jobs:
               > /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log 2>&1 < /dev/null &
             disown || true
             sleep 5
-            pgrep -f "^${APP_CMD}$"
+            if ! pgrep -f "^${APP_CMD}$" > /dev/null; then
+              echo "Bot process did not stay running. Recent log output:"
+              tail -n 50 /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log || true
+              exit 1
+            fi
+            echo "Masqueroll deployed successfully."
