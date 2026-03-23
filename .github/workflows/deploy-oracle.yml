@@ -1,0 +1,46 @@
+name: Deploy To Oracle
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: maven
+
+      - name: Build runnable jar
+        run: mvn -B package
+
+      - name: Copy jar to Oracle VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          source: target/masqueroll.jar
+          target: /home/${{ secrets.ORACLE_USER }}/masqueroll/
+          strip_components: 1
+
+      - name: Restart bot service
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            mkdir -p /home/${{ secrets.ORACLE_USER }}/masqueroll
+            sudo systemctl restart masqueroll.service
+            sudo systemctl status masqueroll.service --no-pager

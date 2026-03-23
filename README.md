@@ -263,6 +263,70 @@ If you add fonts in `src/fonts`, the renderer will use these when present:
 mvn package
 ```
 
+This produces a runnable fat jar at:
+
+```text
+target/masqueroll.jar
+```
+
+## GitHub Deploy
+
+You can deploy automatically to your Oracle VM with the workflow in:
+
+- `.github/workflows/deploy-oracle.yml`
+
+It will:
+
+- build `target/masqueroll.jar`
+- copy it to `/home/opc/masqueroll/masqueroll.jar`
+- restart `masqueroll.service` on the server
+
+### GitHub secrets
+
+Add these repository secrets:
+
+- `ORACLE_HOST`
+  - your VM public IP, for example `145.241.216.215`
+- `ORACLE_USER`
+  - usually `opc`
+- `ORACLE_SSH_KEY`
+  - the full private SSH key contents
+
+### Oracle VM setup
+
+1. Install Java on the VM.
+2. Create the app folder:
+
+```bash
+mkdir -p /home/opc/masqueroll
+```
+
+3. Create the runtime `.env`:
+
+```bash
+cat > /home/opc/masqueroll/.env <<'EOF'
+DISCORD_BOT_TOKEN=your-token-here
+EOF
+```
+
+4. Copy the service file from `deploy/masqueroll.service` to the server:
+
+```bash
+sudo cp deploy/masqueroll.service /etc/systemd/system/masqueroll.service
+```
+
+If you do this directly on the server instead, use the same contents and make sure `User` and the `/home/opc/masqueroll` paths match your setup.
+
+5. Enable the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable masqueroll.service
+sudo systemctl start masqueroll.service
+```
+
+6. After that, every push to `main` will deploy automatically.
+
 ## Notes
 
 - Prefix commands require `MESSAGE CONTENT INTENT`.
