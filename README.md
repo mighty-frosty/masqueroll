@@ -280,6 +280,7 @@ It will:
 - build `target/masqueroll.jar`
 - copy it to `/home/opc/masqueroll/masqueroll.jar`
 - write `/home/opc/masqueroll/.env` from your GitHub secret
+- install Java 25 on the VM if `java` is missing
 - stop the previous bot process if one is running
 - start the new jar in the background
 - write logs to `/home/opc/masqueroll/bot.log`
@@ -299,7 +300,7 @@ Add these repository secrets:
 
 ### Oracle VM setup
 
-1. Install Java on the VM.
+1. Make sure your SSH user can run `sudo dnf install` non-interactively.
 2. Create the app folder:
 
 ```bash

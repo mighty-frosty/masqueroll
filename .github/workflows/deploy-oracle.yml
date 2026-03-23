@@ -54,14 +54,23 @@ jobs:
               echo "masqueroll.jar not found."
               exit 1
             fi
-            /usr/bin/java -version
-            APP_CMD="/usr/bin/java -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar"
+            if ! command -v java >/dev/null 2>&1; then
+              echo "Java not found on VM. Installing Java 25..."
+              sudo dnf install -y java-25-openjdk
+            fi
+            JAVA_BIN=$(command -v java)
+            if [ -z "$JAVA_BIN" ]; then
+              echo "Java is still not available after installation."
+              exit 1
+            fi
+            "$JAVA_BIN" -version
+            APP_CMD="$JAVA_BIN -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar"
             EXISTING_PIDS=$(pgrep -f "^${APP_CMD}$" || true)
             if [ -n "$EXISTING_PIDS" ]; then
               kill $EXISTING_PIDS || true
               sleep 2
             fi
-            nohup /usr/bin/java -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar \
+            nohup "$JAVA_BIN" -jar /home/${{ secrets.ORACLE_USER }}/masqueroll/masqueroll.jar \
               > /home/${{ secrets.ORACLE_USER }}/masqueroll/bot.log 2>&1 < /dev/null &
             disown || true
             sleep 5
