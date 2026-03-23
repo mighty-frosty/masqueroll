@@ -6,21 +6,15 @@ import vtm.masqueroll.BotCommand;
 
 public record CharacterCommand(CommandContext context) implements Command {
 
-    private static final String CHARACTER_ALIAS = "!characters";
-
     @Override
     public boolean matchesMessage(String content) {
         return content.equalsIgnoreCase(BotCommand.CHARACTER.prefixCommand())
-            || content.startsWith(BotCommand.CHARACTER.prefixCommand() + " ")
-            || content.equalsIgnoreCase(CHARACTER_ALIAS)
-            || content.startsWith(CHARACTER_ALIAS + " ");
+            || content.startsWith(BotCommand.CHARACTER.prefixCommand() + " ");
     }
 
     @Override
     public void handleMessage(MessageReceivedEvent event, String content) {
-        String args = content.startsWith(CHARACTER_ALIAS)
-            ? content.substring(CHARACTER_ALIAS.length()).trim()
-            : content.substring(BotCommand.CHARACTER.prefixCommand().length()).trim();
+        String args = content.substring(BotCommand.CHARACTER.prefixCommand().length()).trim();
         String displayName = args.isEmpty()
             ? event.getMember() != null ? event.getMember().getEffectiveName() : event.getAuthor().getName()
             : args;

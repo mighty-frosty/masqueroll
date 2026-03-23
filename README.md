@@ -96,7 +96,6 @@ Examples:
 
 - `!character`
 - `!character Michael`
-- `!characters Michael`
 - `/character`
 - `/character name:Michael image:<attachment>`
 

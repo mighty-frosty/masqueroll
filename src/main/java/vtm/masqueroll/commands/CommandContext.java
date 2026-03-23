@@ -30,7 +30,6 @@ public record CommandContext(
             **Masqueroll Commands**
             `!help` Show this help message
             `!character Michael` Create your sheet
-            `!characters Michael` Same as `!character`
             `!set <stat> <value>` Update one stat
             `!macro <name> = <formula>` Save a macro
             `!removemacro <name>` Remove a macro
