@@ -51,7 +51,7 @@ jobs:
         env:
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
@@ -67,6 +67,14 @@ jobs:
             sudo apt update
             sudo apt install -y docker.io
             sudo systemctl enable --now docker
+          fi
+          if [ -z "$GHCR_USERNAME" ]; then
+            echo "GHCR_USERNAME is empty."
+            exit 1
+          fi
+          if [ -z "$GHCR_TOKEN" ]; then
+            echo "GHCR_TOKEN is empty."
+            exit 1
           fi
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           docker pull "$IMAGE_NAME:latest"
