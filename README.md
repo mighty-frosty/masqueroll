@@ -15,13 +15,13 @@ A Java Discord bot for Vampire: The Masquerade V5 dice rolls, rerolls, rouse che
 
 ## Tech stack
 
-- Java 21
+- Java 26
 - Maven
 - JDA
 
 ## Setup
 
-1. Install Java 21 and Maven.
+1. Install Java 26 and Maven.
 2. Create `.env` from the example:
 
 ```powershell
