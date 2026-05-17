@@ -309,6 +309,23 @@ public final class CharacterSheetService {
             return;
         }
 
+        if (message.getChannel() instanceof ThreadChannel thread && thread.isArchived()) {
+            thread.getManager().setArchived(false).queue(
+                v -> message.editMessage(newContent).queue(
+                    edited -> onSuccess.accept(parseSheet(edited)),
+                    failure -> {
+                        LOG.severe("Failed to edit sheet message: " + failure);
+                        onFailure.accept("I couldn't update your sheet right now.");
+                    }
+                ),
+                failure -> {
+                    LOG.severe("Failed to unarchive thread: " + failure);
+                    onFailure.accept("I couldn't update your sheet right now.");
+                }
+            );
+            return;
+        }
+
         message.editMessage(newContent).queue(
             edited -> onSuccess.accept(parseSheet(edited)),
             failure -> {
