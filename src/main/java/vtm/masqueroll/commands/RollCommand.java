@@ -169,7 +169,10 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
                     }
                 );
             },
-            error -> handleSheetlessReroll(event, componentId, pendingRoll, rerollType)
+            error -> {
+                pendingRolls.put(componentId, pendingRoll);
+                event.reply(error).setEphemeral(true).queue();
+            }
         );
         return true;
     }
@@ -388,6 +391,13 @@ public record RollCommand(CommandContext context, Map<String, PendingRoll> pendi
             summary,
             sheet
         );
+
+        var member = event.getGuild() != null ? event.getGuild().getSelfMember() : null;
+        var guildChannel = event.getGuildChannel();
+        if (member != null && !member.hasAccess(guildChannel)) {
+            event.getHook().sendMessage("I don't have permission to send messages in this channel.").setEphemeral(true).queue();
+            return;
+        }
 
         if (context.imageRenderer().isEnabled()) {
             byte[] imageBytes = context.imageRenderer().render(summary);
