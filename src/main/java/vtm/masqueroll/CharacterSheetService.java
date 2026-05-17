@@ -13,9 +13,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 public final class CharacterSheetService {
 
+    private static final Logger LOG = Logger.getLogger(CharacterSheetService.class.getName());
     private static final String CHANNEL_NAME = "character-sheets";
     private static final int HISTORY_SCAN_LIMIT = 100;
     private static final String TRACKERS_MARKER = "---- TRACKERS ----";
@@ -309,7 +311,10 @@ public final class CharacterSheetService {
 
         message.editMessage(newContent).queue(
             edited -> onSuccess.accept(parseSheet(edited)),
-            failure -> onFailure.accept("I couldn't update your sheet right now.")
+            failure -> {
+                LOG.severe("Failed to edit sheet message: " + failure);
+                onFailure.accept("I couldn't update your sheet right now.");
+            }
         );
     }
 
