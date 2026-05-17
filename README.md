@@ -88,9 +88,51 @@ Examples:
 !v 6 2
 !v 6 2 3
 !v wits + awareness
+!v str + dex
 !v auspex
 !v auspex +2
 ```
+
+All stat names support three-letter abbreviations:
+
+| Abbr | Stat |
+|------|------|
+| str | strength |
+| dex | dexterity |
+| sta | stamina |
+| cha | charisma |
+| man | manipulation |
+| com | composure |
+| int | intelligence |
+| wit | wits |
+| res | resolve |
+| ath | athletics |
+| bra | brawl |
+| cra | craft |
+| dri | drive |
+| fir | firearms |
+| lar | larceny |
+| mel | melee |
+| ste | stealth |
+| sur | survival |
+| ani | animalken |
+| eti | etiquette |
+| ins | insight |
+| iti | intimidation |
+| lea | leadership |
+| prf | performance |
+| per | persuasion |
+| stw | streetwise |
+| sub | subterfuge |
+| aca | academics |
+| awa | awareness |
+| fin | finance |
+| inv | investigation |
+| med | medicine |
+| occ | occult |
+| pol | politics |
+| sci | science |
+| tec | technology |
 
 ### Character sheets
 

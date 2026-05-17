@@ -17,6 +17,8 @@ public record CharacterSheet(
 ) {
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("([+-]?[^+-]+)");
+
+
     private static final int DEFAULT_HUNGER = 0;
     private static final String HUNGER_KEY = "hunger";
     private static final int BASE_HEALTH = 3;
@@ -107,6 +109,7 @@ public record CharacterSheet(
 
     private OptionalInt resolveValue(String key, Set<String> seen) {
         String normalized = normalizeKey(key);
+        normalized = StatAlias.resolve(normalized);
         String rawValue = values.get(normalized);
         if (rawValue == null || rawValue.isEmpty()) {
             return OptionalInt.empty();
